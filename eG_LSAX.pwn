@@ -17,10 +17,10 @@
 #include <GetVehicleName>
 #include <OPA>
 #include <irc>
-#include "../include/gl_common.inc"
 #include <objetos>
 #include <strlib>
 //============================= [Includes] =====================================
+#include "../include/gl_common.inc"
 //============================= [Settings] =====================================
 #define Userfile 														"Admin/Users/%s.ini"
 #define snowing                                                         true
@@ -32,7 +32,7 @@
 #define MAX_PLAYERS                                                     401
 
 #define CPTIME                                                          240000//Time between each checkpoint 240000
-new MAX_CP_CLEARED = 6;
+new MAX_CP_CLEARED = 8;
 
 #define MAX_CLANS                                                       10
 #define MAX_GET_AIRDROP                                                 4
@@ -1607,7 +1607,6 @@ public OnGameModeInit()
 OpenDataBase()
 {
 	Database = db_open("SERVER/Database.db");
-
     format(DB_Query, sizeof(DB_Query), "");
     strcat(DB_Query, "CREATE TABLE IF NOT EXISTS USERS (");
 	strcat(DB_Query, "ID INTEGER PRIMARY KEY AUTOINCREMENT,");
@@ -1636,9 +1635,13 @@ OpenDataBase()
 	strcat(DB_Query, "WARN2 TEXT DEFAULT '',");
 	strcat(DB_Query, "WARN3 TEXT DEFAULT '',");
 	strcat(DB_Query, "SCREAMS INTEGER DEFAULT 0,");
-	strcat(DB_Query, "MUTED INTEGER DEFAULT 0)");
-
-	//db_query(Database, "UPDATE CLANS SET XP =  WHERE ID = '1'");
+	strcat(DB_Query, "MUTED INTEGER DEFAULT 0,");
+	strcat(DB_Query, "CLANID INTEGER DEFAULT 0,");
+	strcat(DB_Query, "CLANLEADERID INTEGER DEFAULT 0)");
+	db_query(Database, DB_Query);
+	
+    Database = db_open("SERVER/Database.db");
+    
  	format(DB_Query, sizeof(DB_Query), "");
     strcat(DB_Query, "CREATE TABLE IF NOT EXISTS CLANS (");
 	strcat(DB_Query, "ID INTEGER PRIMARY KEY AUTOINCREMENT,");
@@ -1646,10 +1649,14 @@ OpenDataBase()
 	strcat(DB_Query, "XP INTEGER DEFAULT 0,");
 	strcat(DB_Query, "KILLS INTEGER DEFAULT 0,");
 	strcat(DB_Query, "INFECTS INTEGER DEFAULT 0)");
-	/*format(DB_Query, sizeof(DB_Query), "");
-	strcat(DB_Query, "ALTER TABLE USERS ADD COLUMN CLANLEADERID INTEGER DEFAULT 0");*/
+	
+    db_query(Database, DB_Query);
+    
+    /*format(DB_Query, sizeof(DB_Query), "");
+	strcat(DB_Query, "ALTER TABLE USERS ADD COLUMN CLANID INTEGER DEFAULT 0");*/
 
-	db_query(Database, DB_Query);
+    /*format(DB_Query, sizeof(DB_Query), "");
+	strcat(DB_Query, "ALTER TABLE USERS ADD COLUMN CLANLEADERID INTEGER DEFAULT 0");*/
 	return 1;
 }
 
@@ -2655,10 +2662,10 @@ public OnPlayerDisconnect(playerid,reason)
         case 2: format(string,sizeof string,"» "cred"%s has left the server. (Kicked/Banned)",GetPName(playerid));
     }
     
-        new
+    new
 		leaveMsg[128],
 		name[MAX_PLAYER_NAME],
-		reasonMsg[8];
+		reasonMsg[24];
 	switch(reason)
 	{
 		case 0:
@@ -2785,6 +2792,8 @@ public OnPlayerConnect(playerid)
 	SetPlayerWeather(playerid, 9);
 	SetPlayerTime(playerid, 6, 0);
 	PlayerState[playerid] = false;
+	PInfo[playerid][ClanID] = 0;
+	PInfo[playerid][ClanLeaderID] = 0;
 	PInfo[playerid][SPerk] = 1;
 	PInfo[playerid][ZPerk] = 1;
 	PInfo[playerid][Bites] = 0;
@@ -3063,8 +3072,8 @@ public OnRconLoginAttempt(ip[], password[], success) // ANTI-FAILED-RCON-LOGIN: 
 CMD:anims(playerid, params[])
 {
     new string[1024];
-    strcat(string, "{9F9F9F}" "/relax | /scared | /sick | /wave | /spank | /taichi | /crossarms |\n", 1024);
-    strcat(string, "{FFA200}" "/wank | /kiss | /talk | /fucku | /cocaine | /rocky | /sit | /smoke |\n", 1024);
+    strcat(string, "{9F9F9F}" "/scared | /sick | /wave | /spank | /taichi | /crossarms |\n", 1024);
+    strcat(string, "{FFA200}" "/kiss | /talk | /fucku | /cocaine | /rocky | /sit | /smoke |\n", 1024);
     strcat(string, "{9F9F9F}" "/beach | /lookout | /circle | /medic | /chat | /die | /slapa | /rofl |\n", 1024);
     strcat(string, "{FFA200}" "/glitched | /fakefire | /bomb | /robman | /handsup | /piss |\n", 1024);
     strcat(string, "{9F9F9F}" "/getin | /skate | /cover | /vomit | /drunk |\n", 1024);
@@ -3492,7 +3501,7 @@ CMD:makeleader(playerid, params[])
 CMD:commands(playerid, params[])
 {
     SendClientMessage(playerid, 0x33DA00FF, "* Commands *");
-    SendClientMessage(playerid, 0x33DA00FF, "* Chat commands: "cwhite"/me - /l");
+    SendClientMessage(playerid, 0x33DA00FF, "* General commands: "cwhite"/me - /l - /ctop (Clans TOP) - /ptop (Players TOP)");
     SendClientMessage(playerid, 0x33DA00FF, "* Have you got a clan? "cwhite"Type /clanhelp to view the clan information.");
     SendClientMessage(playerid, 0x33DA00FF, "* Are you premium and you want to know the commands? "cwhite"Check it out using /premiumhelp");
     SendClientMessage(playerid, 0x33DA00FF, "* Animations: "cwhite"/anims - /animsoff");
@@ -10432,7 +10441,7 @@ function FiveSeconds()
 		{
 		    if(RoundEnded == 0)
 		    {
-          		if(Extra3CPs == 1)
+          		/*if(Extra3CPs == 1)
 	        	{
 	        	    SetTimerEx("EndRound",3000,false,"i",1);
 				    GameTextForAll("~w~The round has ended.",3000,3);
@@ -10447,7 +10456,15 @@ function FiveSeconds()
 		        foreach(new i:Player) DisablePlayerCheckpoint(i);
 		        KillTimer(RandomCPTimer);
 				SetTimer("Extra3CPS", 3000, false);
-				GameTextForAll("~y~Max ~r~infection ~y~level reached.",3000,3);
+				GameTextForAll("~y~Max ~r~infection ~y~level reached.",3000,3);*/
+				SetTimerEx("EndRound",3000,false,"i",1);
+    			GameTextForAll("~w~The round has ended.",3000,3);
+				CPscleared = 0;
+		        CPID = 0, CP_Activated = 0;
+		        KillTimer(HTimer);
+		        KillTimer(AirDTimer);
+		        foreach(new i:Player) DisablePlayerCheckpoint(i);
+		        KillTimer(RandomCPTimer);
 			}
 		}
 		infects = 0;
@@ -10457,7 +10474,7 @@ function FiveSeconds()
 	{
 	    if(RoundEnded == 0)
 	    {
-	        if(Extra3CPs == 1)
+	        /*if(Extra3CPs == 1)
         	{
         	    SetTimerEx("EndRound",3000,false,"i",2);
 			    GameTextForAll("~w~The round has ended.",3000,3);
@@ -10472,7 +10489,15 @@ function FiveSeconds()
 	        foreach(new i:Player) DisablePlayerCheckpoint(i);
 	        KillTimer(RandomCPTimer);
 	    	SetTimer("Extra3CPS", 3000, false);
-			GameTextForAll("~y~6 CPs Cleared Sucessfully.",3000,3);
+			GameTextForAll("~y~6 CPs Cleared Sucessfully.",3000,3);*/
+			SetTimerEx("EndRound",3000,false,"i",2);
+			GameTextForAll("~w~The round has ended.",3000,3);
+			CPscleared = 0;
+	        CPID = 0, CP_Activated = 0;
+	        KillTimer(HTimer);
+	        KillTimer(AirDTimer);
+	        foreach(new i:Player) DisablePlayerCheckpoint(i);
+	        KillTimer(RandomCPTimer);
 		}
 	}
 	return 1;
