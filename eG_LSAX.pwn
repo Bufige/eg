@@ -31,7 +31,7 @@
 #define MAX_PLAYERS                                                     401
 
 #define CPTIME                                                          240000//Time between each checkpoint 240000
-new MAX_CP_CLEARED = 8;
+new MAX_CP_CLEARED = 6;
 
 #define MAX_CLANS                                                       10
 #define MAX_GET_AIRDROP                                                 4
@@ -1438,7 +1438,7 @@ public OnGameModeInit()
 	TextDrawSetShadow(TD_INTRO_PLAY[8], 0);
 	TextDrawSetSelectable(TD_INTRO_PLAY[8], true);
 
-	CPSCleared = TextDrawCreate(500.625000, 98.416671, "~w~Checkpoints_cleared____~r~0~w~/8");
+	CPSCleared = TextDrawCreate(500.625000, 98.416671, "~w~Checkpoints_cleared____~r~0~w~/6");
 	TextDrawLetterSize(CPSCleared, 0.228124, 1.605834);
 	TextDrawAlignment(CPSCleared, 1);
 	TextDrawColor(CPSCleared, -1);
