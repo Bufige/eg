@@ -17,7 +17,6 @@
 #include <GetVehicleName>
 #include <OPA>
 #include <irc>
-#include <objetos>
 #include <strlib>
 //============================= [Includes] =====================================
 #include "../include/gl_common.inc"
@@ -235,7 +234,9 @@ enum
  	Ragebandialog,
  	Topplayerdialog,
  	Airdropdialog,
- 	DIALOG_ANIMS
+ 	DIALOG_ANIMS,
+	Change_Pass1,
+	Change_Pass2
 };
 
 main(){}
@@ -877,7 +878,6 @@ new bool:aDuty[MAX_PLAYERS char],
 new Streaks[MAX_PLAYERS];
 
 new
-	Timer,
 	Pumpkin,
 	Winner,
 	Number,
@@ -911,7 +911,7 @@ new Float: RandomPositions[24][3] = {
 	{723.216430, -1495.780029, 1.934344}
 };
 
-static const LocationsName[24][256] = {
+static const LocationsName[24][64] = {
 	{"El Corona"},
 	{"Idlewood"},
 	{"Commerce"},
@@ -942,6 +942,9 @@ new AODSkin[MAX_PLAYERS],
 	HTimer,
 	RandomCPTimer;
 
+
+new timer_update_stats, timer_dizzy,timer_marker,timer_fiveseconds,timer_randommessage,timer_antifake,timer_anti_wep;
+
 public OnGameModeInit()
 {
 	// Wait 5 seconds for the first bot
@@ -968,18 +971,18 @@ public OnGameModeInit()
     CA_Init();
 
 	SetTimer("ServerSettings", 10, false);
-	SetTimer("UpdateStats", 1000, true);
-	SetTimer("Marker", 700, true);
-	SetTimer("Dizzy", 60000, true);
-	RandomCPTimer = SetTimer("RandomCheckpoint", CPTIME, false);
+	timer_update_stats = SetTimer("UpdateStats", 1000, true);
+	timer_marker = SetTimer("Marker", 700, true);
+	timer_dizzy = SetTimer("Dizzy", 60000, true);
+	timer_randommessage = RandomCPTimer = SetTimer("RandomCheckpoint", CPTIME, false);
 	//SetTimer("RandomSounds",120000, true);
-	SetTimer("FiveSeconds", 3000, true);
+	timer_fiveseconds = SetTimer("FiveSeconds", 3000, true);
 	SetTimer("RandomMessage", 500000, true);
 
 	HTimer = SetTimer("HalloweenEvent", 600000, true);
 	AirDTimer = SetTimer("AirDropTimer", 1020000, false);
-	SetTimer("FakekillT", 600, true);
-	SetTimer("anti_wep_hax",ANTI_WEP_HAX_TIMER,true);
+	timer_antifake = SetTimer("FakekillT", 600, true);
+	timer_anti_wep = SetTimer("anti_wep_hax",ANTI_WEP_HAX_TIMER,true);
 
     ShowPlayerMarkers(0);
     EnableStuntBonusForAll(0);
@@ -1435,7 +1438,7 @@ public OnGameModeInit()
 	TextDrawSetShadow(TD_INTRO_PLAY[8], 0);
 	TextDrawSetSelectable(TD_INTRO_PLAY[8], true);
 
-	CPSCleared = TextDrawCreate(500.625000, 98.416671, "~w~Checkpoints_cleared____~r~0~w~/6");
+	CPSCleared = TextDrawCreate(500.625000, 98.416671, "~w~Checkpoints_cleared____~r~0~w~/8");
 	TextDrawLetterSize(CPSCleared, 0.228124, 1.605834);
 	TextDrawAlignment(CPSCleared, 1);
 	TextDrawColor(CPSCleared, -1);
@@ -1639,9 +1642,9 @@ OpenDataBase()
 	strcat(DB_Query, "CLANID INTEGER DEFAULT 0,");
 	strcat(DB_Query, "CLANLEADERID INTEGER DEFAULT 0)");
 	db_query(Database, DB_Query);
-	
+
     Database = db_open("SERVER/Database.db");
-    
+
  	format(DB_Query, sizeof(DB_Query), "");
     strcat(DB_Query, "CREATE TABLE IF NOT EXISTS CLANS (");
 	strcat(DB_Query, "ID INTEGER PRIMARY KEY AUTOINCREMENT,");
@@ -1649,9 +1652,9 @@ OpenDataBase()
 	strcat(DB_Query, "XP INTEGER DEFAULT 0,");
 	strcat(DB_Query, "KILLS INTEGER DEFAULT 0,");
 	strcat(DB_Query, "INFECTS INTEGER DEFAULT 0)");
-	
+
     db_query(Database, DB_Query);
-    
+
     /*format(DB_Query, sizeof(DB_Query), "");
 	strcat(DB_Query, "ALTER TABLE USERS ADD COLUMN CLANID INTEGER DEFAULT 0");*/
 
@@ -1680,15 +1683,22 @@ function IRC_ConnectDelay(tempid)
 
 public OnGameModeExit()
 {
-    IRC_Quit(gBotID[0], "GameMode exiting");
+    /*IRC_Quit(gBotID[0], "GameMode exiting");
 	// Disconnect the second bot
 	IRC_Quit(gBotID[1], "GameMode exiting");
 	// Destroy the group
-	IRC_DestroyGroup(gGroupID);
+	IRC_DestroyGroup(gGroupID);*/
 
     RoundEnded = 0;
     KillTimer(AirDTimer);
-    KillTimer(Timer);
+    KillTimer(timer_update_stats);
+    KillTimer(timer_dizzy);
+    KillTimer(timer_marker);
+    KillTimer(timer_fiveseconds);
+    KillTimer(timer_randommessage);
+    KillTimer(timer_antifake);
+    KillTimer(timer_anti_wep);
+    //KillTimer()
     for(new i; i < MAX_PLAYERS;i++)
 	{
 	   	DestroyDynamicObject(SnowObj[i][0]);
@@ -1805,7 +1815,6 @@ public OnPlayerSpawn(playerid)
 	for(new a=0; a < 129; a++) ApplyAnimation(playerid,AnimLibraies[a],"null",0.0,0,0,0,0,0);
 
 	PInfo[playerid][P_STATUS] = PS_SPAWNED;
-	PingTimer[playerid] = SetTimerEx("CheckPing", 10000, 1, "i", playerid);
     SetPlayerTime(playerid, 0, 0);
     PlayerState[playerid] = true;
 
@@ -1825,6 +1834,7 @@ public OnPlayerSpawn(playerid)
 
 		CheckRankup(playerid);
 	    PInfo[playerid][Firstspawn] = 0;
+	    PingTimer[playerid] = SetTimerEx("CheckPing", 10000, 1, "i", playerid);
 	}
 
   	if(Extra3CPs == 1)
@@ -2172,6 +2182,7 @@ public OnPlayerSpawn(playerid)
 		SetPlayerTime(playerid, 6, 0);
 		Team[playerid] = ZOMBIE;
 
+		KillTimer(TimerBait[playerid]); // this is to fix a laggy issue, since every onplayerspawn a timer is created.. now it kills the old one.
 	    TimerBait[playerid] = SetTimerEx("BaitEffect", 700, true, "i", playerid);
 
 	    if(PInfo[playerid][Premium] == 1 || PInfo[playerid][Premium] == 2)
@@ -2661,7 +2672,7 @@ public OnPlayerDisconnect(playerid,reason)
         case 1: format(string,sizeof string,"» "cred"%s has left the server. (Leaving)",GetPName(playerid));
         case 2: format(string,sizeof string,"» "cred"%s has left the server. (Kicked/Banned)",GetPName(playerid));
     }
-    
+
     new
 		leaveMsg[128],
 		name[MAX_PLAYER_NAME],
@@ -2684,7 +2695,7 @@ public OnPlayerDisconnect(playerid,reason)
 	GetPlayerName(playerid, name, sizeof(name));
 	format(leaveMsg, sizeof(leaveMsg), "02[%d] 03*** %s has left the server. (%s)", playerid, name, reasonMsg);
 	IRC_GroupSay(gGroupID, IRC_CHANNEL, leaveMsg);
-    
+
     StopAudioStreamForPlayer(playerid);
     KillTimer(TimerBait[playerid]);
     KillTimer(PingTimer[playerid]);
@@ -2750,7 +2761,7 @@ public OnPlayerConnect(playerid)
 		joinMsg[128],
 		name[MAX_PLAYER_NAME];
 	GetPlayerName(playerid, name, sizeof(name));
-	format(joinMsg, sizeof(joinMsg), "02[%d] 03*** %s entró al servidor.", playerid, name);
+	format(joinMsg, sizeof(joinMsg), "02[%d] 03*** %s joined to the server.", playerid, name);
 	IRC_GroupSay(gGroupID, IRC_CHANNEL, joinMsg);
 
 	new connecting_ip[32+1];
@@ -3069,6 +3080,27 @@ public OnRconLoginAttempt(ip[], password[], success) // ANTI-FAILED-RCON-LOGIN: 
     return 1;
 }
 
+CMD:infect(playerid,params[])
+{
+    InfectPlayer(playerid);
+}
+
+CMD:ircpm(playerid,params[])
+{
+    new text[128], string[256];
+    if(sscanf(params, "s[128]", text)) return SendClientMessage(playerid, white, "USAGE: /irc [Text] ");
+
+    new temp[MAX_STRING];
+	format(temp,sizeof temp,"%s",text);
+    if(!anti_ip(temp))
+	{
+	    format(string, sizeof(string), "7,1PM from %s(%d) to IRC: %s",GetPName(playerid),playerid,temp);
+	    IRC_GroupSay(gGroupID, IRC_CHANNEL, string);
+	    SendFMessage(playerid, 0xFFCC2299, "[IRC PM] %s(%d): %s",GetPName(playerid),playerid,temp);
+	}
+    return 1;
+}
+
 CMD:anims(playerid, params[])
 {
     new string[1024];
@@ -3080,7 +3112,7 @@ CMD:anims(playerid, params[])
     strcat(string, "{FFA200}" "/funnywalk | /kickass | /cell | /laugh | /eat | /injured |\n", 1024);
     strcat(string, "{9F9F9F}" "/slapass | /laydown | /arrest | /carjack |\n", 1024);
     strcat(string, ""cgreen"Type /animsoff to stop the animation.", 1024);
-    ShowPlayerDialog(playerid,DIALOG_ANIMS,DIALOG_STYLE_MSGBOX,"{9F9F9F}" "DAnims", string, "-->oK<--", "");
+    ShowPlayerDialog(playerid,DIALOG_ANIMS,DIALOG_STYLE_MSGBOX,"{9F9F9F}" "Anims", string, "-->oK<--", "");
     return 1;
 }
 
@@ -3444,6 +3476,24 @@ CMD:gotopumpkin(playerid, params[])
 	if(GetPlayerState(playerid) == 2) SetVehiclePos(GetPlayerVehicleID(playerid), RandomPositions[Number][0], RandomPositions[Number][1]+5, RandomPositions[Number][2]);
 	else SetPlayerPos(playerid, RandomPositions[Number][0], RandomPositions[Number][1]+5, RandomPositions[Number][2]);
 	SendClientMessage(playerid, -1, "You've been teleported near the pumpkin.");
+	return 1;
+}
+
+CMD:changepass(playerid,params[])
+{
+	if(PInfo[playerid][Level] >=5 || IsPlayerAdmin(playerid))
+	{
+		new id;
+	    if(sscanf(params, "u", id)) return SendClientMessage(playerid, white, "USE: /changepass [ID]");
+	    if(!IsPlayerConnected(id)) return SendClientMessage(playerid, white, "ERROR: Wrong ID");
+
+	    SendClientMessage(playerid, -1, "The player has been asked to change his password.");
+	    ShowPlayerDialog(id,Change_Pass1, DIALOG_STYLE_INPUT, "Current Password", "Enter your current password", "Confirm", "Cancel");
+	}
+	else
+	{
+	    return 0;
+	}
 	return 1;
 }
 
@@ -6503,6 +6553,45 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
             return SendClientMessage(playerid, ~1, string), true;
         }
     }
+
+    if(dialogid == Change_Pass1)
+    {
+        if(response)
+        {
+            new DBResult:Result;
+			format(DB_Query, sizeof(DB_Query), "SELECT PASS FROM USERS WHERE NAME = '%s'", GetPName(playerid));
+			Result = db_query(Database, DB_Query);
+			if(db_num_rows(Result))
+			{
+				db_get_field(Result, 0, PInfo[playerid][Password], 131);
+				new buf[149];
+    	    	WP_Hash(buf, sizeof (buf), inputtext);
+				if(!strcmp(PInfo[playerid][Password],buf))
+				{
+				    SendClientMessage(playerid, -1, "Your password is right! ");
+				    ShowPlayerDialog(playerid,Change_Pass2, DIALOG_STYLE_INPUT, "Update Password", "Enter your new password", "Confirm", "Cancel");
+				}
+				else
+				{
+				    SendClientMessage(playerid, -1, "Your password is wrong! ");
+				}
+			}
+			db_free_result(Result);
+        }
+    }
+    if(dialogid == Change_Pass2)
+    {
+		if(response)
+		{
+            new buf[149];
+    	    WP_Hash(buf, sizeof (buf), inputtext);
+    		format(DB_Query, sizeof(DB_Query), "");
+			format(DB_Query, sizeof(DB_Query), "UPDATE USERS SET PASS = '%s' WHERE NAME = '%s'", buf,GetPName(playerid));
+			db_query(Database, DB_Query);
+			SendClientMessage(playerid, -1, "Your password has been changed! ");
+    	}
+
+    }
     if(dialogid == Airdropdialog)
     {
         if(response)
@@ -7245,8 +7334,8 @@ public OnPlayerText(playerid, text[])
 
 	     	new
 				ircMsg[256];
-			if(Team[playerid] == 1) format(ircMsg, sizeof(ircMsg), "03[%d] %s: %s", playerid, GetPName(playerid), text);
-			else if(Team[playerid] == 1) format(ircMsg, sizeof(ircMsg), "02[%d] %s: %s", playerid, GetPName(playerid), text);
+			if(Team[playerid] == 1) format(ircMsg, sizeof(ircMsg), "03[%d] %s: %s", playerid, GetPName(playerid), text);
+			else if(Team[playerid] == 1) format(ircMsg, sizeof(ircMsg), "02[%d] %s: %s", playerid, GetPName(playerid), text);
 			IRC_GroupSay(gGroupID, IRC_CHANNEL, ircMsg);
 
 		    if(gettime() < PInfo[playerid][P_ANTIFLOOD_TICKCOUNT] + 1) { SendClientMessage(playerid, red, "[Anti Flood] Calm down to send menssages."); return 0; }
@@ -9057,29 +9146,36 @@ function CheckCP()
 					}
 		        }
 			}
-		}
-
-		new type;
-		if(counter > 5)
-	    {
-	        type = 3;
-	    }
-	    else if(counter <= 2)
-	    {
-	        type = 0;
-	    }
-	    else type = 2;
-
-		for(new x=0; x < type; x++)
-		{
-		    new rand = random(counter);
-		    if(MyVar[rand] != -1)
+			new type;
+			if(counter > 5 && PlayersConnected >= 15) // more than 5 high rank players and at least 15 people connected.
+	    	{
+	        	type = 3;
+	    	}
+	    	else if( (counter <= 2 && counter >= 1) && PlayersConnected > 10) // between 1~2 high rank players and more than 10 people connected.
+	    	{
+	        	type = 1;
+	    	}
+	    	else if( (counter > 2 && counter <= 5) && PlayersConnected > 10) // between 3~5 high rank players and more than 10 people connected.
+	    	{
+				type = 2;
+			}
+			else if(counter > 0 && PlayersConnected > 5) // more than 1 high rank players and more than 5 people connected.
 			{
-				InfectPlayer(MyVar[rand]);
-				SendFMessageToAll(white, "[Auto Balance] "cred"%s has been auto setted to the zombie team.", GetPName(MyVar[rand]));
-				MyVar[rand] = -1;
-		    }
+			    type = 1;
+			}
+
+			for(new x=0; x < type; x++)
+			{
+		    	new rand = random(counter);
+		    	if(MyVar[rand] != -1)
+				{
+					InfectPlayer(MyVar[rand]);
+					SendFMessageToAll(white, "[Auto Balance] "cred"%s has been auto setted to the zombie team.", GetPName(MyVar[rand]));
+					MyVar[rand] = -1;
+		    	}
+			}
 		}
+
 	}
 	if(CPValue >= CPVALUE)
 	{
@@ -9362,7 +9458,10 @@ stock IsVehicleOccupied(vehicleid)
 	    if(Team[i] == ZOMBIE) continue;
     	if(IsPlayerInVehicle(i, vehicleid))
     	{
-  			return 1;
+    	    if(GetPlayerVehicleSeat(i) == 0) // only driving can reduce the fuel/oil now.
+    	    {
+  				return 1;
+  			}
 		}
   	}
   	return 0;
@@ -10457,8 +10556,15 @@ function FiveSeconds()
 		        KillTimer(RandomCPTimer);
 				SetTimer("Extra3CPS", 3000, false);
 				GameTextForAll("~y~Max ~r~infection ~y~level reached.",3000,3);*/
-				SetTimerEx("EndRound",3000,false,"i",1);
-    			GameTextForAll("~w~The round has ended.",3000,3);
+				new string[200];
+    			format(string,sizeof(string),"04The round has ended.");
+                IRC_GroupSay(gGroupID, IRC_CHANNEL, string);
+				if(RoundEnded == 0)
+			    {
+					SetTimerEx("EndRound",3000,false,"i",1);
+					GameTextForAll("~w~The round has ended.",3000,3);
+					RoundEnded = 1;
+				}
 				CPscleared = 0;
 		        CPID = 0, CP_Activated = 0;
 		        KillTimer(HTimer);
@@ -10490,8 +10596,16 @@ function FiveSeconds()
 	        KillTimer(RandomCPTimer);
 	    	SetTimer("Extra3CPS", 3000, false);
 			GameTextForAll("~y~6 CPs Cleared Sucessfully.",3000,3);*/
-			SetTimerEx("EndRound",3000,false,"i",2);
-			GameTextForAll("~w~The round has ended.",3000,3);
+			new string[200];
+			format(string,sizeof(string),"04The round has ended.");
+            IRC_GroupSay(gGroupID, IRC_CHANNEL, string);
+
+			if(RoundEnded == 0)
+		    {
+				SetTimerEx("EndRound",3000,false,"i",1);
+				GameTextForAll("~w~The round has ended.",3000,3);
+				RoundEnded = 1;
+			}
 			CPscleared = 0;
 	        CPID = 0, CP_Activated = 0;
 	        KillTimer(HTimer);
@@ -11118,6 +11232,19 @@ stock DamagePlayer(playerid,i)
 		else {
 		    format(string2,sizeof string2,""cpurple"Rank: %i | XP: %i/%i",PInfo[i][Rank],PInfo[i][XP],PInfo[i][XPToRankUp]); }
 
+
+		format(string,sizeof string,"Rank:_%i~n~Infects:_%i~n~Deaths:_%i~n~Bites:_%i~n~Perk:_%i~n~Assists:_%i~n~Vomited:_%i",
+				PInfo[i][Rank],
+				PInfo[i][Infects],
+				PInfo[i][Deaths],
+				PInfo[i][Bites],
+				PInfo[i][ZPerk]+1,
+				PInfo[i][Assists],
+				PInfo[i][Vomited]
+		);
+
+		PlayerTextDrawSetString(i, StatsBoxDraw[i], string);
+
 		Update3DTextLabelText(PInfo[i][Ranklabel],0x00E800FF,string2);
 	}
 	return 1;
@@ -11319,13 +11446,13 @@ function ServerSettings()
 
 	if(ServerN == 0)
 	{
-		SendRconCommand("hostname [eG] Zombie Apocalyptic Outbreak 2.0");
+		SendRconCommand("hostname [eG] Zombie Apocalyptic Outbreak 2.0[LagShot]");
         SetTimer("ServerSettings", 2500,0);
 		ServerN = 1;
 	}
 	else if(ServerN == 1)
 	{
-		SendRconCommand("hostname eternal-Games.net ® Zombie Mode - Double XP!");
+		SendRconCommand("hostname eternal-Games.net ® Zombie Mode - Double XP![LagShot]");
         SetTimer("ServerSettings", 1500,0);
 		ServerN = 0;
 	}
@@ -12203,6 +12330,25 @@ IRCCMD:say(botid, channel[], user[], host[], params[])
 	return 1;
 }
 
+IRCCMD:players(botid, channel[], user[], host[], params[])
+{
+	new tempstr[128], string[200], count;
+	for( new i ,slots = GetMaxPlayers(); i < slots; i++ )
+	{
+	    if( IsPlayerConnected(i) )
+	    {
+	        count++;
+	        format( tempstr, sizeof(tempstr), "%s , %s", tempstr, GetPName(i) );
+	    }
+	}
+	if( count )
+	{
+		format( string, sizeof(string), "Connected Players[%d/%d]:- %s", count, GetMaxPlayers(), tempstr);
+		IRC_Say( botid, channel, string );
+	}else IRC_Say( botid, channel, "No Player Online" );
+	return 1;
+}
+
 IRCCMD:kick(botid, channel[], user[], host[], params[])
 {
 	// Check if the user is at least a halfop in the channel
@@ -12436,6 +12582,39 @@ stock anti_ip(string[])
 	    return 1;
 	}
 	return 0;
+}
+stock ServerObjects()
+{
+    new File:handle = fopen("objetos.txt", io_read),buf[512];
+	new modelid, Float:x, Float:y, Float:z, Float:rx, Float:ry, Float:rz;
+
+	new objetcs = 0;
+	if(handle)
+	{
+	    new output[7][16];
+		while(fread(handle, buf))
+		{
+		    trim(buf);
+		    if(!strcmp(GetSingleChar(buf,0),"/"))
+		    {
+		        //it is a comment.
+		    }
+		    else
+		    {
+                strexplode(output, buf, ",");
+                modelid = strval(output[0]);
+				x =  floatstr(output[1]);
+				y =  floatstr(output[2]);
+				z =  floatstr(output[3]);
+				rx =  floatstr(output[4]);
+				ry =  floatstr(output[5]);
+				rz =  floatstr(output[6]);
+				CreateDynamicObject(modelid, x, y, z, rx, ry, rz);
+				objetcs++;
+		    }
+		}
+	}
+	printf("Loaded %d objetcs",objetcs);
 }
 
 function ZHideAgain(playerid) CanHide{playerid} = true;
