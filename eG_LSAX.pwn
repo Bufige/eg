@@ -11027,10 +11027,18 @@ stock GivePlayerXP(playerid)
      	if(PInfo[playerid][ShowingXP] == 0)
 	    {
 			new string[7];
-		 	if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
-		 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
-			else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 32; PInfo[playerid][CurrentXP] = 32; }
-
+			
+			if(PInfo[playerid][Rank] < 5)
+			{
+			 	if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 32; PInfo[playerid][CurrentXP] = 32; }
+			} else {
+	 			if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 8; PInfo[playerid][CurrentXP] = 8; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
+			}
+			
 			if(PInfo[playerid][ClanID] != 0)
 			{
 				format(DB_Query, sizeof(DB_Query), "UPDATE CLANS SET XP = XP + %d WHERE ID = '%d'", PInfo[playerid][CurrentXP], PInfo[playerid][ClanID]);
@@ -11049,6 +11057,18 @@ stock GivePlayerXP(playerid)
 		else
 		{
 		    new string[7];
+		    
+		    if(PInfo[playerid][Rank] < 5)
+			{
+			 	if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 32; PInfo[playerid][CurrentXP] = 32; }
+			} else {
+	 			if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 8; PInfo[playerid][CurrentXP] = 8; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
+			}
+		    
 			if(PInfo[playerid][ClanID] != 0)
 			{
 				format(DB_Query, sizeof(DB_Query), "UPDATE CLANS SET XP = XP + %d WHERE ID = '%d'", PInfo[playerid][CurrentXP], PInfo[playerid][ClanID]);
@@ -11067,10 +11087,17 @@ stock GivePlayerXP(playerid)
 	    if(PInfo[playerid][ShowingXP] == 0)
   		{
 			new string[7];
-	 		if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 10; PInfo[playerid][CurrentXP] = 10; }
-		 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
-			else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 30; PInfo[playerid][CurrentXP] = 30; }
-
+			if(PInfo[playerid][Rank] < 5)
+			{
+		 		if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 10; PInfo[playerid][CurrentXP] = 10; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 30; PInfo[playerid][CurrentXP] = 30; }
+			} else {
+ 				if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 5; PInfo[playerid][CurrentXP] = 5; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 10; PInfo[playerid][CurrentXP] = 10; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
+			}
+			
 			if(PInfo[playerid][ClanID] != 0)
 			{
 				format(DB_Query, sizeof(DB_Query), "UPDATE CLANS SET XP = XP + %d WHERE ID = '%d'", PInfo[playerid][CurrentXP], PInfo[playerid][ClanID]);
@@ -11089,9 +11116,16 @@ stock GivePlayerXP(playerid)
 		else
 		{
 	        new string[7];
-	 		if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 10; PInfo[playerid][CurrentXP] = 10; }
-		 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
-			else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 30; PInfo[playerid][CurrentXP] = 30; }
+			if(PInfo[playerid][Rank] < 5)
+			{
+		 		if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 10; PInfo[playerid][CurrentXP] = 10; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 30; PInfo[playerid][CurrentXP] = 30; }
+			} else {
+ 				if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 5; PInfo[playerid][CurrentXP] = 5; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 10; PInfo[playerid][CurrentXP] = 10; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
+			}
 
 			if(PInfo[playerid][ClanID] != 0)
 			{
@@ -11184,10 +11218,17 @@ stock DamagePlayer(playerid,i)
 		        if(j == playerid) continue;
 		        if(IsSpecing[playerid] == 1) continue;
 
-			 	if(PInfo[j][Premium] == 0){ PInfo[j][XP] += 8; PInfo[j][CurrentXP] = 8; }
-			 	else if(PInfo[j][Premium] == 1){ PInfo[j][XP] += 16; PInfo[j][CurrentXP] = 16; }
-				else if(PInfo[j][Premium] == 2){ PInfo[j][XP] += 24; PInfo[j][CurrentXP] = 24; }
-
+				if(PInfo[playerid][Rank] < 5)
+				{
+				 	if(PInfo[j][Premium] == 0){ PInfo[j][XP] += 8; PInfo[j][CurrentXP] = 8; }
+				 	else if(PInfo[j][Premium] == 1){ PInfo[j][XP] += 16; PInfo[j][CurrentXP] = 16; }
+					else if(PInfo[j][Premium] == 2){ PInfo[j][XP] += 24; PInfo[j][CurrentXP] = 24; }
+				} else {
+		 			if(PInfo[j][Premium] == 0){ PInfo[j][XP] += 4; PInfo[j][CurrentXP] = 4; }
+				 	else if(PInfo[j][Premium] == 1){ PInfo[j][XP] += 8; PInfo[j][CurrentXP] = 8; }
+					else if(PInfo[j][Premium] == 2){ PInfo[j][XP] += 16; PInfo[j][CurrentXP] = 16; }
+				}
+				
 		        PInfo[j][Assists]++;
 		        CheckRankup(j);
 
@@ -11446,13 +11487,13 @@ function ServerSettings()
 
 	if(ServerN == 0)
 	{
-		SendRconCommand("hostname [eG] Zombie Apocalyptic Outbreak 2.0[LagShot]");
+		SendRconCommand("hostname Zombie Apocalyptic Outbreak 2.0[LagShot]");
         SetTimer("ServerSettings", 2500,0);
 		ServerN = 1;
 	}
 	else if(ServerN == 1)
 	{
-		SendRconCommand("hostname eternal-Games.net ® Zombie Mode - Double XP![LagShot]");
+		SendRconCommand("hostname eternal-Games.net ® Zombie Mode - [LagShot]");
         SetTimer("ServerSettings", 1500,0);
 		ServerN = 0;
 	}
