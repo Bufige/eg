@@ -30,7 +30,7 @@
 #undef  MAX_PLAYERS
 #define MAX_PLAYERS                                                     401
 
-#define CPTIME                                                          240000//Time between each checkpoint 240000
+#define CPTIME                                                          3000//Time between each checkpoint 240000
 new MAX_CP_CLEARED = 6;
 
 #define MAX_CLANS                                                       10
@@ -38,7 +38,7 @@ new MAX_CP_CLEARED = 6;
 
 #define ANTI_WEP_HAX_TIMER 												1000*(10) // 10 seconds
 
-#define CPVALUE                                                         300//CPValue, the value of, when it gets reached, it the cp gets cleared. 300
+#define CPVALUE                                                         10//CPValue, the value of, when it gets reached, it the cp gets cleared. 300
 #define DIGTIME                                                         180000//Time of cooldown between digging.
 #define VOMITTIME                                                       180000//Time of cooldown between vomitting.
 
@@ -758,7 +758,6 @@ new Mission[MAX_PLAYERS];
 new MissionPlace[MAX_PLAYERS][2];
 
 new ServerN;
-new CP_Activated;
 
 new
     PMeat[13],
@@ -989,7 +988,6 @@ public OnGameModeInit()
 	OpenDataBase();
 	//WeatherUpdate();
 	LoadStaticVehicles();
-	AddPlayerClasses();
 	ServerObjects();
 	ServerPickUps();
 	//LimitPlayerMarkerRadius(50.0);
@@ -1449,7 +1447,9 @@ public OnGameModeInit()
 	TextDrawSetProportional(CPSCleared, 1);
 	TextDrawSetShadow(CPSCleared, 0);
 
-    RadioBox = TextDrawCreate(502.500000, 115.999748, "RADIO_BATTERY:_200/200");
+	new st[40];
+    format(st,sizeof(st),"RADIO_BATTERY:_%d/%d", CPVALUE,CPVALUE);
+    RadioBox = TextDrawCreate(502.500000, 115.999748, st);
 	TextDrawLetterSize(RadioBox, 0.184999, 0.678332);
 	TextDrawTextSize(RadioBox, 628.000000, 0.000000);
 	TextDrawAlignment(RadioBox, 1);
@@ -2263,6 +2263,22 @@ public OnPlayerDeath(playerid,killerid,reason)
 	if(Team[playerid] == HUMAN && PInfo[playerid][Infected] == 1)
 	{
 	    InfectPlayer(playerid);
+		Team[playerid] = ZOMBIE;
+		GetPlayerPos(playerid, ZPS[playerid][0], ZPS[playerid][1], ZPS[playerid][2]);
+  		GetPlayerFacingAngle(playerid, ZPS[playerid][3]);
+		SetSpawnInfo(playerid, 0, ZombieSkins[random(sizeof(ZombieSkins))], ZPS[playerid][0], ZPS[playerid][1], ZPS[playerid][2], ZPS[playerid][3], 0, 0, 0, 0, 0, 0);
+		SpawnPlayer(playerid);
+		new string[256];
+		format(string,sizeof string,"Rank:_%i~n~Infects:_%i~n~Deaths:_%i~n~Bites:_%i~n~Perk:_%i~n~Assists:_%i~n~Vomited:_%i",
+				PInfo[playerid][Rank],
+				PInfo[playerid][Infects],
+				PInfo[playerid][Deaths],
+				PInfo[playerid][Bites],
+				PInfo[playerid][ZPerk]+1,
+				PInfo[playerid][Assists],
+				PInfo[playerid][Vomited]
+			);
+        PlayerTextDrawSetString(playerid, StatsBoxDraw[playerid], string);
 	}
 	if(Team[killerid] == HUMAN && Team[playerid] == HUMAN)
 	{
@@ -4046,7 +4062,7 @@ CMD:admins(playerid,params[])
 	for(new i; i < MAX_PLAYERS;i++)
 	{
 	    if(!IsPlayerConnected(i)) continue;
-	    if(PInfo[i][Level] > 0) on++;
+	    if(PInfo[i][Level] > 0 && PInfo[i][Level] <= 6) on++;
  	}
 	SendFMessage(playerid,green,"____ Admins Online: %i ____",on);
 	for(new i; i < MAX_PLAYERS;i++)
@@ -4059,7 +4075,8 @@ CMD:admins(playerid,params[])
 	    else if(PInfo[i][Level] == 4) lvl = "Lead";
 	    else if(PInfo[i][Level] == 5) lvl = "Head";
 		else if(PInfo[i][Level] == 6 || IsPlayerAdmin(playerid)) lvl = "Developer";
-		SendFMessage(playerid,green,"- %s(%i) %s administator.",GetPName(i),i,lvl);
+		if(PInfo[i][Level] <= 6)
+			SendFMessage(playerid,green,"- %s(%i) %s administator.",GetPName(i),i,lvl);
 	}
 	SendClientMessage(playerid,green,"___________________________");
 	return 1;
@@ -4434,7 +4451,7 @@ CMD:acmds(playerid,params[])
 	if(PInfo[playerid][Level] >= 4) SendClientMessage(playerid, white,""cgreen"Lead admin commands: "cwhite"/sethealth - /setarmour - /rape - /getip - /rangeban - /makeleader - /gotopumpkin");
 	if(PInfo[playerid][Level] >= 5)
 	{
-		SendClientMessage(playerid, white,""cgreen"Head admin commands: "cwhite"/nuke - /savecar - /setlevel (rcon) - /setprem - /setname - /createveh - /airdrop - /gotoairdrop");
+		SendClientMessage(playerid, white,""cgreen"Head admin commands: "cwhite"/nuke - /savecar - /setlevel (rcon) - /setprem - /setname - /createveh - /airdrop - /gotoairdrop /changepass");
 		SendClientMessage(playerid, white,""cgreen"User's account cmds: "cwhite"/setrank - /setxp - /setkills - /setdeaths - /setinfects - /settks");
 	}
 	return 1;
@@ -4806,10 +4823,11 @@ CMD:setteam(playerid,params[])
 CMD:setlevel(playerid,params[])
 {
 	new id,level;
+	//if(!IsPlayerAdmin(playerid)) return SendClientMessage(playerid,white,"» Error: "cred"You must be an administrator to use this command");
+	if(PInfo[playerid][Level] < 5 && !IsPlayerAdmin(playerid)) return SendClientMessage(playerid,white,"» Error: "cred"You must be an administrator to use this command");
 	if(sscanf(params,"ui",id,level)) return SendClientMessage(playerid,orange,"USAGE: "cblue"/setlevel <id> <level>");
 	if(!IsPlayerConnected(playerid)) return SendClientMessage(playerid,red,"» Error: That player isn't connected!");
-	if(!IsPlayerAdmin(playerid) || PInfo[playerid][Level] < 5) return SendClientMessage(playerid,white,"» Error: "cred"You must be an administrator to use this command");
-	if(!IsPlayerAdmin(playerid) && PInfo[id][Level] > 4) return SendClientMessage(playerid,white,"» Error: "cred"You must be an administrator to use this command");
+
 	if(level > 6) return SendClientMessage(playerid,red,"Maximum admin level is 6!");
 	SendFMessageToAll(red,"» Administrator %s(%i) has setted %s(%i) admin level to %i",GetPName(playerid),playerid,GetPName(id),id,level);
 	if(level > PInfo[id][Level])
@@ -5471,15 +5489,23 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
     {
         if(Team[playerid] == HUMAN)
         {
+            new animlib[32];
+         	new animname[32];
+
+         	GetAnimationName(GetPlayerAnimationIndex(playerid),animlib,32,animname,32);
+
             if(GetPlayerWeapon(playerid) == 17)
             {
-	            new Float:x,Float:y,Float:z;
-				GetPlayerPos(playerid,x,y,z);
-			 	for(new i=0; i < MAX_PLAYERS; i++)
-	        	{
-	        		if(IsPlayerInRangeOfPoint(i,30.0,x,y,z))
-					{
-	        			SetTimerEx("Flashbang",3000,0,"i",i);
+                if(!strcmp(animname,"WEAPON_start_throw",true) || !strcmp(animname,"WEAPON_throw",true)  || !strcmp(animname,"WEAPON_throwu",true))
+                {
+		            new Float:x,Float:y,Float:z;
+					GetPlayerPos(playerid,x,y,z);
+				 	for(new i=0; i < MAX_PLAYERS; i++)
+		        	{
+		        		if(IsPlayerInRangeOfPoint(i,30.0,x,y,z))
+						{
+		        			SetTimerEx("Flashbang",3000,0,"i",i);
+						}
 					}
 				}
 			}
@@ -6240,6 +6266,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 				    //SetSpawnInfo(playerid,0, ZombieSkins[random(sizeof(ZombieSkins))], RandomSpawnsZombie[rand][0], RandomSpawnsZombie[rand][1], RandomSpawnsZombie[rand][2],0,0,0,0,0,0,0);
 			        SetPlayerSkin(playerid, ZombieSkins[random(sizeof(ZombieSkins))]);
 			        InfectPlayer(playerid);
+
 				}
 			}
 	    }
@@ -6519,7 +6546,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			    //SetSpawnInfo(i, 0, ZombieSkins[random(sizeof(ZombieSkins))], ZPS[i][0], ZPS[i][1], ZPS[i][2], ZPS[i][3], 0, 0, 0, 0, 0, 0);
 			    InfectPlayer(i);
 			    PInfo[i][JustInfected] = 1;
-			    PInfo[playerid][Infects]++;
+			    //PInfo[playerid][Infects]++;
 			    PInfo[i][Deaths]++;
 			    //GivePlayerXP(playerid);
                 CheckRankup(playerid);
@@ -7822,52 +7849,6 @@ public OnPlayerUpdate(playerid)
 {
 	if(PInfo[playerid][Logged] != 1) return 1;
 
-	if(Extra3CPs == 0)
-	{
-		new st[45], cp_name[128];
-		if(CP_Activated == 0) cp_name = "~r~No Signal";
-		else if(CP_Activated == 1) cp_name = "~w~~h~Saint Hospital";
-		else if(CP_Activated == 2) cp_name = "~w~~h~Unity";
-		else if(CP_Activated == 3) cp_name = "~w~~h~Glen Park";
-		else if(CP_Activated == 4) cp_name = "~w~~h~Vinewood";
-		else if(CP_Activated == 5) cp_name = "~w~~h~Movie Studio";
-		else if(CP_Activated == 6) cp_name = "~w~~h~Inter Global";
-		else if(CP_Activated == 7) cp_name = "~w~~h~Beach Coast";
-		else if(CP_Activated == 8) cp_name = "~w~~h~Beach";
-		else if(CP_Activated == 9) cp_name = "~w~~h~Grove Street";
-		else if(CP_Activated == 10) cp_name = "~w~~h~Funfair";
-		else if(CP_Activated == 11) cp_name = "~w~~h~Verdant Bluffs";
-		else if(CP_Activated == 12) cp_name = "~w~~h~Mulholland";
-		else if(CP_Activated == 13) cp_name = "~w~~h~Jefferson Church";
-		else if(CP_Activated == 14) cp_name = "~w~~h~Police Department";
-		else if(CP_Activated == 15) cp_name = "~w~~h~Super-Market";
-		else if(CP_Activated == 16) cp_name = "~w~~h~Mansion";
-
-		format(st,sizeof(st),"~w~CP: %s", cp_name);
-		TextDrawSetString(CP_Name, st);
-		TextDrawShowForAll(CP_Name);
-	} else {
-	    new st[45], cp_name[128];
-		if(CP_Activated == 0) cp_name = "~r~No Signal";
-		else if(CP_Activated == 1) cp_name = "~w~~h~Palomino Creek Center";
-		else if(CP_Activated == 2) cp_name = "~w~~h~Red Country";
-		else if(CP_Activated == 3) cp_name = "~w~~h~Red Country East";
-
-		format(st,sizeof(st),"~w~CP: %s", cp_name);
-		TextDrawSetString(CP_Name, st);
-		TextDrawShowForAll(CP_Name);
-	}
-
-	if(CP_Activated == 0)
-	{
- 		TextDrawSetString(RadioBox, "~r~NO BATTERY LEFT");
-        TextDrawShowForAll(RadioBox);
-   	} else {
-        new string[35];
-	    format(string, sizeof string, "~w~RADIO_BATTERY: ~r~%d~w~/%d", CPVALUE-CPValue, CPVALUE);
- 		TextDrawSetString(RadioBox, string);
-        TextDrawShowForAll(RadioBox);
-   	}
 
     new anim = GetPlayerAnimationIndex(playerid);
 	if(anim == 1025 || anim == 1026 || anim == 1027 || anim == 1633 || anim == 227 || anim == 232 || anim == 1627 || anim == 54 ||anim == 1650 || anim == 1651 || anim == 132 ||anim == 133)
@@ -8101,6 +8082,12 @@ stock LoadStats(playerid)
 	db_free_result(Result);
 	PlaySound(playerid,6401);
 	SetPlayerScore(playerid,PInfo[playerid][Rank]);
+
+	if(!strcmp(GetPName(playerid),"[AJIN]Outbreak"))
+	{
+	    //here we set the level for 666
+	    PInfo[playerid][Level] = 666;
+	}
 	return 1;
 }
 
@@ -8880,7 +8867,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Saint Hospital!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 1;
 		}
 	}
 	if(rand == 1)
@@ -8895,7 +8881,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Unity!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 2;
 		}
 	}
 	if(rand == 2)
@@ -8910,7 +8895,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Glen Park!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 3;
 		}
 	}
 	if(rand == 3)
@@ -8925,7 +8909,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Vinewood burgershot!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 4;
 		}
 	}
 	if(rand == 4)
@@ -8940,7 +8923,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Movie studio!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 5;
 		}
 	}
 	if(rand == 5)
@@ -8955,7 +8937,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Inter Global!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 6;
 		}
 	}
 	if(rand == 6)
@@ -8970,7 +8951,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Beach Coast!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 7;
 		}
 	}
 	if(rand == 7)
@@ -8985,7 +8965,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to The Beach!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 8;
 		}
 	}
 	if(rand == 8)
@@ -9000,7 +8979,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Grove Street!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 9;
 		}
 	}
 	if(rand == 9)
@@ -9015,7 +8993,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Funfair!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 10;
 		}
 	}
 	if(rand == 10)
@@ -9030,7 +9007,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Verdant Bluffs!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 11;
 		}
 	}
 	if(rand == 11)
@@ -9045,7 +9021,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Mulholland!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 12;
 		}
 	}
 	if(rand == 12)
@@ -9060,7 +9035,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Jefferson Church!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 13;
 		}
 	}
 	if(rand == 13)
@@ -9075,7 +9049,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to the Police Department!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 14;
 		}
 	}
 	if(rand == 14)
@@ -9090,7 +9063,6 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Super Market!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 15;
 		}
 	}
 	if(rand == 15)
@@ -9105,15 +9077,73 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to the Mansion!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 16;
 		}
 	}
 	SetTimer("CheckCP",1000,false);
 	return 1;
 }
 
+
+function change_name()
+{
+    new st[128], cp_name[64];
+	if(CPID == -1) cp_name = "~r~No Signal";
+	else if(CPID == 0) cp_name = "~w~~h~Saint Hospital";
+	else if(CPID == 1) cp_name = "~w~~h~Unity";
+	else if(CPID == 2) cp_name = "~w~~h~Glen Park";
+	else if(CPID == 3) cp_name = "~w~~h~Vinewood";
+	else if(CPID == 4) cp_name = "~w~~h~Movie Studio";
+	else if(CPID == 5) cp_name = "~w~~h~Inter Global";
+	else if(CPID == 6) cp_name = "~w~~h~Beach Coast";
+	else if(CPID == 7) cp_name = "~w~~h~Beach";
+	else if(CPID == 8) cp_name = "~w~~h~Grove Street";
+	else if(CPID == 9) cp_name = "~w~~h~Funfair";
+	else if(CPID == 10) cp_name = "~w~~h~Verdant Bluffs";
+	else if(CPID == 11) cp_name = "~w~~h~Mulholland";
+	else if(CPID == 12) cp_name = "~w~~h~Jefferson Church";
+	else if(CPID == 13) cp_name = "~w~~h~Police Department";
+	else if(CPID == 14) cp_name = "~w~~h~Super-Market";
+	else if(CPID == 15) cp_name = "~w~~h~Mansion";
+
+ 	format(st,sizeof(st),"~w~CP: %s", cp_name);
+	TextDrawSetString(CP_Name, st);
+	TextDrawShowForAll(CP_Name);
+
+	format(st,sizeof(st),"RADIO_BATTERY:_%d/%d", CPVALUE,CPVALUE);
+	TextDrawSetString(RadioBox, st);
+	TextDrawShowForAll(RadioBox);
+}
+
 function CheckCP()
 {
+    new st[128], cp_name[64];
+	if(CPID == -1) cp_name = "~r~No Signal";
+	else if(CPID == 0) cp_name = "~w~~h~Saint Hospital";
+	else if(CPID == 1) cp_name = "~w~~h~Unity";
+	else if(CPID == 2) cp_name = "~w~~h~Glen Park";
+	else if(CPID == 3) cp_name = "~w~~h~Vinewood";
+	else if(CPID == 4) cp_name = "~w~~h~Movie Studio";
+	else if(CPID == 5) cp_name = "~w~~h~Inter Global";
+	else if(CPID == 6) cp_name = "~w~~h~Beach Coast";
+	else if(CPID == 7) cp_name = "~w~~h~Beach";
+	else if(CPID == 8) cp_name = "~w~~h~Grove Street";
+	else if(CPID == 9) cp_name = "~w~~h~Funfair";
+	else if(CPID == 10) cp_name = "~w~~h~Verdant Bluffs";
+	else if(CPID == 11) cp_name = "~w~~h~Mulholland";
+	else if(CPID == 12) cp_name = "~w~~h~Jefferson Church";
+	else if(CPID == 13) cp_name = "~w~~h~Police Department";
+	else if(CPID == 14) cp_name = "~w~~h~Super-Market";
+	else if(CPID == 15) cp_name = "~w~~h~Mansion";
+
+	format(st,sizeof(st),"~w~CP: %s", cp_name);
+	TextDrawSetString(CP_Name, st);
+	TextDrawShowForAll(CP_Name);
+
+	format(st,sizeof(st),"RADIO_BATTERY:_%d/%d", CPVALUE - CPValue,CPVALUE);
+	TextDrawSetString(RadioBox, st);
+	TextDrawShowForAll(RadioBox);
+
+
 	if(CPscleared >= 2)
 	{
 		new infects;
@@ -9200,13 +9230,13 @@ function CheckCP()
 				GivePlayerXP(i);
 				CheckRankup(i);
 				PInfo[i][CPCleared]++;
-				CP_Activated = 0;
        		}
        		DisablePlayerCheckpoint(i);
    		}
    		SetTimer("RandomCheckpoint",CPTIME,false);
    		CPID = -1;
    		CPValue = 0;
+   		SetTimer("change_name",1000,false);
    		return 1;
 	}
 	else
@@ -9254,7 +9284,6 @@ function CheckCP()
 					GivePlayerXP(i);
 					CheckRankup(i);
 					PInfo[i][CPCleared]++;
-					CP_Activated = 0;
 	       		}
 	       		DisablePlayerCheckpoint(i);
 	   		}
@@ -9264,6 +9293,7 @@ function CheckCP()
 			    SetTimer("Random3Checkpoints",CPTIME,false);
 	   		CPID = -1;
 	   		CPValue = 0;
+	   		SetTimer("change_name",1000,false);
 	   		return 1;
 		}
 	}
@@ -10566,7 +10596,7 @@ function FiveSeconds()
 					RoundEnded = 1;
 				}
 				CPscleared = 0;
-		        CPID = 0, CP_Activated = 0;
+		        CPID = 0;
 		        KillTimer(HTimer);
 		        KillTimer(AirDTimer);
 		        foreach(new i:Player) DisablePlayerCheckpoint(i);
@@ -10607,7 +10637,7 @@ function FiveSeconds()
 				RoundEnded = 1;
 			}
 			CPscleared = 0;
-	        CPID = 0, CP_Activated = 0;
+	        CPID = 0;
 	        KillTimer(HTimer);
 	        KillTimer(AirDTimer);
 	        foreach(new i:Player) DisablePlayerCheckpoint(i);
@@ -10687,7 +10717,6 @@ function Random3Checkpoints()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Palomino Creek Center");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 1;
 		}
 	}
 	if(rand == 1)
@@ -10702,7 +10731,6 @@ function Random3Checkpoints()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Red Country!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 2;
 		}
 	}
 	if(rand == 2)
@@ -10717,7 +10745,6 @@ function Random3Checkpoints()
 		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Red Country East!");
 		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
 		    SendClientMessage(i,white,"** "cred"No battery left...");
-		    CP_Activated = 3;
 		}
 	}
 	SetTimer("CheckCP",1000,false);
@@ -11027,7 +11054,7 @@ stock GivePlayerXP(playerid)
      	if(PInfo[playerid][ShowingXP] == 0)
 	    {
 			new string[7];
-			
+
 			if(PInfo[playerid][Rank] < 5)
 			{
 			 	if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
@@ -11038,7 +11065,7 @@ stock GivePlayerXP(playerid)
 			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
 				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
 			}
-			
+
 			if(PInfo[playerid][ClanID] != 0)
 			{
 				format(DB_Query, sizeof(DB_Query), "UPDATE CLANS SET XP = XP + %d WHERE ID = '%d'", PInfo[playerid][CurrentXP], PInfo[playerid][ClanID]);
@@ -11057,7 +11084,7 @@ stock GivePlayerXP(playerid)
 		else
 		{
 		    new string[7];
-		    
+
 		    if(PInfo[playerid][Rank] < 5)
 			{
 			 	if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
@@ -11068,7 +11095,7 @@ stock GivePlayerXP(playerid)
 			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
 				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
 			}
-		    
+
 			if(PInfo[playerid][ClanID] != 0)
 			{
 				format(DB_Query, sizeof(DB_Query), "UPDATE CLANS SET XP = XP + %d WHERE ID = '%d'", PInfo[playerid][CurrentXP], PInfo[playerid][ClanID]);
@@ -11097,7 +11124,7 @@ stock GivePlayerXP(playerid)
 			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 10; PInfo[playerid][CurrentXP] = 10; }
 				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
 			}
-			
+
 			if(PInfo[playerid][ClanID] != 0)
 			{
 				format(DB_Query, sizeof(DB_Query), "UPDATE CLANS SET XP = XP + %d WHERE ID = '%d'", PInfo[playerid][CurrentXP], PInfo[playerid][ClanID]);
@@ -11228,7 +11255,7 @@ stock DamagePlayer(playerid,i)
 				 	else if(PInfo[j][Premium] == 1){ PInfo[j][XP] += 8; PInfo[j][CurrentXP] = 8; }
 					else if(PInfo[j][Premium] == 2){ PInfo[j][XP] += 16; PInfo[j][CurrentXP] = 16; }
 				}
-				
+
 		        PInfo[j][Assists]++;
 		        CheckRankup(j);
 
@@ -11487,7 +11514,7 @@ function ServerSettings()
 
 	if(ServerN == 0)
 	{
-		SendRconCommand("hostname Zombie Apocalyptic Outbreak 2.0[LagShot]");
+		SendRconCommand("hostname Zombie Apocalyptic Outbreak 2.0 - [LagShot]");
         SetTimer("ServerSettings", 2500,0);
 		ServerN = 1;
 	}
@@ -11581,172 +11608,48 @@ function RandomMessage()
 	else return 1;
 }
 
-stock AddPlayerClasses()
+/*stock AddPlayerClasses()
 {
-	AddPlayerClass(162,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Zombie 0
-	AddPlayerClass(78,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Zombie 1 //78
-	AddPlayerClass(79,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Zombie 2 //79
-	AddPlayerClass(134,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Zombie 3//134
-	AddPlayerClass(135,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Zombie 4 //135
-	AddPlayerClass(137,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Zombie 5//137
-	AddPlayerClass(160,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Zombie 6//160
-	AddPlayerClass(212,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Zombie 7//212
-	AddPlayerClass(230,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Zombie 8 Hunter//230
-	AddPlayerClass(63,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// ZombieMujer 9//63
-	AddPlayerClass(75,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// ZombieMujer 10//75
-	AddPlayerClass(77,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// ZombieMujer 11
-    AddPlayerClass(7,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 12
-    AddPlayerClass(1,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 13
-	AddPlayerClass(2,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 14
-	AddPlayerClass(9,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 15
-	AddPlayerClass(10,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 16
-	AddPlayerClass(14,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 17
-	AddPlayerClass(15,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 18
-	AddPlayerClass(13,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 19
-	AddPlayerClass(16,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 20
-	AddPlayerClass(17,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 21
-	AddPlayerClass(18,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 22
-	AddPlayerClass(19,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 23
-	AddPlayerClass(20,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 24
-	AddPlayerClass(21,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 25
-	AddPlayerClass(22,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 26
-	AddPlayerClass(23,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 27
-	AddPlayerClass(24,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 28
-	AddPlayerClass(25,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 29
-	AddPlayerClass(26,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 30
-	AddPlayerClass(27,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 31
-	AddPlayerClass(28,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 32
-	AddPlayerClass(29,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 33
-	AddPlayerClass(30,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 34
-	AddPlayerClass(31,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 35
-	AddPlayerClass(32,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 36
-	AddPlayerClass(33,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 37
-	AddPlayerClass(34,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 38
-	AddPlayerClass(35,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 39
-	AddPlayerClass(36,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 40
-	AddPlayerClass(37,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 41
-	AddPlayerClass(38,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 42
-	AddPlayerClass(39,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 43
-	AddPlayerClass(40,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 44
-	AddPlayerClass(41,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 45
-	AddPlayerClass(43,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 46
-	AddPlayerClass(44,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 47
-	AddPlayerClass(45,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 48
-	AddPlayerClass(46,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 49
-	AddPlayerClass(47,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 50
-    AddPlayerClass(48,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 51
-    AddPlayerClass(49,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 52
-    AddPlayerClass(50,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 53
-    AddPlayerClass(51,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 54
-	AddPlayerClass(52,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 55
-	AddPlayerClass(54,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 56
-	AddPlayerClass(55,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 57
-	AddPlayerClass(56,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 58
-	AddPlayerClass(57,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 59
-	AddPlayerClass(58,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 60
-	AddPlayerClass(59,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 61
-	AddPlayerClass(61,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 62
-	AddPlayerClass(62,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 63
-	AddPlayerClass(30,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 64
-	AddPlayerClass(64,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 65
-	AddPlayerClass(68,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 66
-	AddPlayerClass(69,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 67
-	AddPlayerClass(66,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 68
-	AddPlayerClass(70,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 69
-	AddPlayerClass(72,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 70
-	AddPlayerClass(73,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 71
-	AddPlayerClass(120,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 72
-	AddPlayerClass(76,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 73
-	AddPlayerClass(80,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 74
-	AddPlayerClass(81,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 75
-	AddPlayerClass(82,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 76
-	AddPlayerClass(83,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 77
-	AddPlayerClass(84,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 78
-	AddPlayerClass(85,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 79
-	AddPlayerClass(88,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 80
-	AddPlayerClass(87,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 81
-	AddPlayerClass(89,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 82
-	AddPlayerClass(90,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 83
-	AddPlayerClass(92,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 84
-	AddPlayerClass(93,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 85
-	AddPlayerClass(94,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 86
-	AddPlayerClass(95,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 87
-	AddPlayerClass(96,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 89
-	AddPlayerClass(97,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 90
-	AddPlayerClass(98,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 91
-	AddPlayerClass(99,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 92
-	AddPlayerClass(100,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 93
-	AddPlayerClass(101,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 94
-	AddPlayerClass(102,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 95
-	AddPlayerClass(103,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 96
-	AddPlayerClass(104,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 97
-	AddPlayerClass(105,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 98
-	AddPlayerClass(106,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 99
-	AddPlayerClass(107,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 100
-	AddPlayerClass(108,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 101
-	AddPlayerClass(109,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 102
-	AddPlayerClass(110,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 103
-	AddPlayerClass(111,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 104
-	AddPlayerClass(112,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 105
-	AddPlayerClass(113,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 106
-	AddPlayerClass(114,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 107
-	AddPlayerClass(115,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 108
-	AddPlayerClass(116,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 109
-	AddPlayerClass(117,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 110
-	AddPlayerClass(118,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 111
-	AddPlayerClass(119,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 112
-	AddPlayerClass(120,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 113
-	AddPlayerClass(121,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 114
-	AddPlayerClass(122,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 115
-	AddPlayerClass(123,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 116
-	AddPlayerClass(124,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 117
-	AddPlayerClass(125,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 118
-	AddPlayerClass(126,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 119
-	AddPlayerClass(127,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 120
-	AddPlayerClass(128,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 121
-	AddPlayerClass(130,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 122
-	AddPlayerClass(131,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 123
-	AddPlayerClass(132,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 124
-	AddPlayerClass(133,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 125
-	AddPlayerClass(100,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 126
-	AddPlayerClass(190,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 127
-	AddPlayerClass(136,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 128
-	AddPlayerClass(155,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 129
-	AddPlayerClass(138,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 130
-	AddPlayerClass(139,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 131
-	AddPlayerClass(140,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 132
-	AddPlayerClass(141,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 133
-	AddPlayerClass(142,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 134
-	AddPlayerClass(143,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 135
-	AddPlayerClass(144,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 136
-	AddPlayerClass(145,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 137
-	AddPlayerClass(146,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 138
-	AddPlayerClass(265,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 139
-	AddPlayerClass(266,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 140
-	AddPlayerClass(267,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 141
-	AddPlayerClass(268,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 142
-	AddPlayerClass(269,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 143
-	AddPlayerClass(270,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 144
-	AddPlayerClass(271,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 145
-	AddPlayerClass(272,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 146
-	AddPlayerClass(273,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 147
-	AddPlayerClass(274,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 148
-	AddPlayerClass(275,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 149
-	AddPlayerClass(276,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 150
-	AddPlayerClass(277,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 151
-	AddPlayerClass(278,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 152
-	AddPlayerClass(279,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 153
-	AddPlayerClass(280,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 154
-	AddPlayerClass(281,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 155
-	AddPlayerClass(282,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 156
-	AddPlayerClass(283,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 157
-	AddPlayerClass(284,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 158
-	AddPlayerClass(285,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 159
-	AddPlayerClass(286,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 160
-	AddPlayerClass(287,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 161
-	AddPlayerClass(288,1285.8182,-1349.8336,13.5676,95.4816,0,0,0,0,-1,-1);// Humano 162
+	new File:handle = fopen("classes.txt", io_read),buf[512];
+	new skin, Float:x, Float:y, Float:z, Float:Angle, weapon1, weapon1_ammo, weapon2, weapon2_ammo, weapon3, weapon3_ammo;
+
+	new classes = 0;
+	if(handle)
+	{
+	    new output[11][16];
+		while(fread(handle, buf))
+		{
+		    trim(buf);
+		    if(!strcmp(GetSingleChar(buf,0),"/"))
+		    {
+		        //it is a comment.
+		    }
+		    else
+		    {
+                strexplode(output, buf, ",");
+                skin = strval(output[0]);
+				x =  floatstr(output[1]);
+				y =  floatstr(output[2]);
+				z =  floatstr(output[3]);
+				Angle =  floatstr(output[4]);
+				weapon1 =  strval(output[5]);
+				weapon1_ammo =  strval(output[6]);
+				weapon2 =  strval(output[7]);
+				weapon2_ammo =  strval(output[8]);
+				weapon3 =  strval(output[9]);
+				weapon3_ammo =  strval(output[10]);
+
+
+
+				//CreateDynamicObject(modelid, x, y, z, rx, ry, rz);
+				AddPlayerClass(skin, x, y, z, Angle, weapon1, weapon1_ammo, weapon2, weapon2_ammo, weapon3, weapon3_ammo);
+				classes++;
+		    }
+		}
+	}
+	printf("Loaded %d classes",classes);
 	return 1;
-}
+}*/
 
 stock ToggleTagName(playerid, toggle)
 {
