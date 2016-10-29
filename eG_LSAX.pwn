@@ -30,7 +30,7 @@
 #undef  MAX_PLAYERS
 #define MAX_PLAYERS                                                     401
 
-#define CPTIME                                                          3000//Time between each checkpoint 240000
+#define CPTIME                                                          240000//Time between each checkpoint 240000
 new MAX_CP_CLEARED = 6;
 
 #define MAX_CLANS                                                       10
@@ -38,7 +38,7 @@ new MAX_CP_CLEARED = 6;
 
 #define ANTI_WEP_HAX_TIMER 												1000*(10) // 10 seconds
 
-#define CPVALUE                                                         10//CPValue, the value of, when it gets reached, it the cp gets cleared. 300
+#define CPVALUE                                                         300//CPValue, the value of, when it gets reached, it the cp gets cleared. 300
 #define DIGTIME                                                         180000//Time of cooldown between digging.
 #define VOMITTIME                                                       180000//Time of cooldown between vomitting.
 
@@ -115,9 +115,9 @@ new MAX_CP_CLEARED = 6;
 #define BOT_2_REALNAME "LSA_Bot2"
 #define BOT_2_USERNAME "Bot_LSA2"
 
-#define IRC_SERVER 	"irc.quakenet.org"
-#define IRC_PORT 	(6667)
-#define IRC_CHANNEL "#eternalGames"
+#define IRC_SERVER 	"irc.gigairc.net"
+#define IRC_PORT 	(6668)
+#define IRC_CHANNEL "#eG"
 #define MAX_BOTS 	(2)
 
 new
@@ -961,7 +961,7 @@ public OnGameModeInit()
 
 	SendRconCommand("mapname LS - Zombie");
     SendRconCommand("weburl www.eternal-games.net");
-    //SendRconCommand("hostname [eG] Zombie Apocalyptic Outbreak 2.0");
+    //SendRconCommand("hostname [eG] NEW IP: 149.56.28.180:7777");
     //SetGameModeText("Zombies VS Humans");
 
 	SendRconCommand("minconnectiontime 	3000");
@@ -1683,11 +1683,11 @@ function IRC_ConnectDelay(tempid)
 
 public OnGameModeExit()
 {
-    /*IRC_Quit(gBotID[0], "GameMode exiting");
+    IRC_Quit(gBotID[0], "GameMode exiting");
 	// Disconnect the second bot
 	IRC_Quit(gBotID[1], "GameMode exiting");
 	// Destroy the group
-	IRC_DestroyGroup(gGroupID);*/
+	IRC_DestroyGroup(gGroupID);
 
     RoundEnded = 0;
     KillTimer(AirDTimer);
@@ -1985,7 +1985,7 @@ public OnPlayerSpawn(playerid)
 			SetPlayerTime(playerid, 6, 0);
 			Team[playerid] = ZOMBIE;
 
-		    TimerBait[playerid] = SetTimerEx("BaitEffect", 700, true, "i", playerid);
+		    //TimerBait[playerid] = SetTimerEx("BaitEffect", 700, true, "i", playerid);
 
 		    if(PInfo[playerid][Premium] == 1 || PInfo[playerid][Premium] == 2)
 		    {
@@ -2182,8 +2182,8 @@ public OnPlayerSpawn(playerid)
 		SetPlayerTime(playerid, 6, 0);
 		Team[playerid] = ZOMBIE;
 
-		KillTimer(TimerBait[playerid]); // this is to fix a laggy issue, since every onplayerspawn a timer is created.. now it kills the old one.
-	    TimerBait[playerid] = SetTimerEx("BaitEffect", 700, true, "i", playerid);
+		//KillTimer(TimerBait[playerid]); // this is to fix a laggy issue, since every onplayerspawn a timer is created.. now it kills the old one.
+	    //TimerBait[playerid] = SetTimerEx("BaitEffect", 700, true, "i", playerid);
 
 	    if(PInfo[playerid][Premium] == 1 || PInfo[playerid][Premium] == 2)
 	    {
@@ -3107,12 +3107,13 @@ CMD:ircpm(playerid,params[])
     if(sscanf(params, "s[128]", text)) return SendClientMessage(playerid, white, "USAGE: /irc [Text] ");
 
     new temp[MAX_STRING];
-	format(temp,sizeof temp,"%s",text);
+	format(temp, sizeof temp,"%s",text);
     if(!anti_ip(temp))
 	{
-	    format(string, sizeof(string), "7,1PM from %s(%d) to IRC: %s",GetPName(playerid),playerid,temp);
+	    SendFMessage(playerid, 0xFFCC2299, "[IRC PM] %s(%d): %s",GetPName(playerid),playerid,text);
+	    
+	    format(string, sizeof(string), "7,1PM from %s(%d) to IRC: %s",GetPName(playerid),playerid,text);
 	    IRC_GroupSay(gGroupID, IRC_CHANNEL, string);
-	    SendFMessage(playerid, 0xFFCC2299, "[IRC PM] %s(%d): %s",GetPName(playerid),playerid,temp);
 	}
     return 1;
 }
@@ -3940,7 +3941,7 @@ CMD:tpm(playerid,params[])
 
 		new
 			ircMsg[256];
-		format(ircMsg, sizeof(ircMsg), "12TPM from %s(%i): %s", GetPName(playerid), playerid, text);
+		format(ircMsg, sizeof(ircMsg), "12TPM from %s(%i): %s", GetPName(playerid), playerid, text);
 		IRC_GroupSay(gGroupID, IRC_CHANNEL, ircMsg);
 	}
 	return 1;
@@ -5244,7 +5245,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			    if(IsPlayerInRangeOfPoint(playerid, 3.0, pZPos[p][0],pZPos[p][1],pZPos[p][2]))
 				{
 					ShowPlayerDialog(playerid, DIALOG_HIVETP, DIALOG_STYLE_LIST, "Hive TP",
-						""cwhite"Grove Street\n"cwhite"Unity\n"cwhite"Los Santos Police Department\n"cwhite"Hospital\n"cwhite"Glen Park\n"cwhite"Market\n"cwhite"Vinewood\n"cwhite"Playa Costera\n"cwhite"Mulhegan\n"cwhite"Beach\n"cwhite"Hive", "[ V ]", "[ X ]");
+						""cwhite"Grove Street\n"cwhite"Unity\n"cwhite"Los Santos Police Department\n"cwhite"Hospital\n"cwhite"Glen Park\n"cwhite"Market\n"cwhite"Vinewood\n"cwhite"Playa Costera\n"cwhite"Mulholland\n"cwhite"Beach\n"cwhite"Hive", "[ V ]", "[ X ]");
 				}
 			}
 		}
@@ -5376,7 +5377,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			    format(string,sizeof string,""cjam"%s(%i) has dropped some zombie bait",GetPName(playerid),playerid);
 				SendNearMessage(playerid,white,string,20);
 				PInfo[playerid][ZombieBait] = 1;
-				SetTimerEx("StopBait", 15000, false, "i", playerid);
+				SetTimerEx("StopBait", 5000, false, "i", playerid);
 				SetTimerEx("UseBaitAgain", 150000, false, "i", playerid);
 			}
 		}
@@ -7494,7 +7495,7 @@ public OnPlayerClickTextDraw(playerid, Text:clickedid)
 
 				SendClientMessage(playerid, red, "|| You've been auto setted to zombie team because there's +70 infection percent and +3 CPs cleared. ||");
 
-			    TimerBait[playerid] = SetTimerEx("BaitEffect", 700, true, "i", playerid);
+			    //TimerBait[playerid] = SetTimerEx("BaitEffect", 700, true, "i", playerid);
 
 			    if(PInfo[playerid][Premium] == 1 || PInfo[playerid][Premium] == 2)
 			    {
@@ -12257,7 +12258,7 @@ public
 IRCCMD:say(botid, channel[], user[], host[], params[])
 {
 	// Check if the user has at least voice in the channel
-	if (IRC_IsVoice(botid, channel, user))
+	if (IRC_IsVoice(botid, channel, user) || IRC_IsOp(botid, channel, user) || IRC_IsAdmin(botid, channel, user) || IRC_IsOwner(botid, channel, user))
 	{
 		// Check if the user enteCOLOR_ROJO any text
 		if (!isnull(params))
@@ -12296,7 +12297,7 @@ IRCCMD:players(botid, channel[], user[], host[], params[])
 IRCCMD:kick(botid, channel[], user[], host[], params[])
 {
 	// Check if the user is at least a halfop in the channel
-	if (IRC_IsHalfop(botid, channel, user))
+	if (IRC_IsOp(botid, channel, user) || IRC_IsAdmin(botid, channel, user) || IRC_IsOwner(botid, channel, user))
 	{
 		new
 			playerid,
@@ -12332,7 +12333,7 @@ IRCCMD:kick(botid, channel[], user[], host[], params[])
 IRCCMD:ann(botid, channel[], user[], host[], params[])
 {
 	// Check if the user has at least operator in the channel
-	if (IRC_IsOp(botid, IRC_CHANNEL, user))
+	if (IRC_IsOp(botid, channel, user) || IRC_IsAdmin(botid, channel, user) || IRC_IsOwner(botid, channel, user))
 	{
 		// Check if the user enteCOLOR_ROJO any text
 		if (!isnull(params))
@@ -12352,7 +12353,7 @@ IRCCMD:ann(botid, channel[], user[], host[], params[])
 IRCCMD:ban(botid, channel[], user[], host[], params[])
 {
 	// Check if the user is at least an op in the channel
-	if (IRC_IsOp(botid, channel, user))
+	if (IRC_IsOp(botid, channel, user) || IRC_IsOwner(botid, channel, user))
 	{
 		new
 			playerid,
@@ -12388,7 +12389,7 @@ IRCCMD:ban(botid, channel[], user[], host[], params[])
 IRCCMD:rcon(botid, channel[], user[], host[], params[])
 {
 	// Check if the user is at least an op in the channel
-	if (IRC_IsOp(botid, channel, user))
+	if (IRC_IsOp(botid, channel, user) || IRC_IsOwner(botid, channel, user))
 	{
 		// Check if the user enteCOLOR_ROJO any text
 		if (!isnull(params))
