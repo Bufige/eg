@@ -943,8 +943,9 @@ new AODSkin[MAX_PLAYERS],
 
 new bool:cp_auto = false;
 
-new timer_update_stats, timer_dizzy,timer_marker,timer_fiveseconds,timer_randommessage,timer_antifake,timer_anti_wep,timer_airdt,timer_hwps;
+new timer_update_stats, timer_dizzy,timer_marker,timer_fiveseconds,timer_randommessage,timer_antifake,timer_anti_wep,timer_airdt,timer_hwps, timer_pump;
 new Float:obj_pos[6];
+new Float:PX, Float:PY, Float:PZ;
 
 public OnGameModeInit()
 {
@@ -1704,6 +1705,7 @@ public OnGameModeExit()
     KillTimer(timer_anti_wep);
     KillTimer(timer_airdt);
     KillTimer(timer_hwps);
+    KillTimer(timer_pump);
     //KillTimer()
     for(new i; i < MAX_PLAYERS;i++)
 	{
@@ -10883,16 +10885,8 @@ public OnPlayerPickUpDynamicPickup(playerid, pickupid)
 			randxp = 10 + random(25),
 			Hour, Minute, Second;
 
-		Winner = 1;
-		PumpkinOn = 0;
-		SendFMessageToAll(COLOR_MAUVE, "» Pumpkin was found by %s. His wish him congratulations!", GetPName(playerid));
-		gettime(Hour, Minute, Second);
-		SendFMessageToAll(COLOR_MAUVE, "» A new pumpkin will be hidden in %d minutes.", Minutes-Minute+10);
-		SendFMessage(playerid, white, "» {2C8522}You won the sum of %d XP !", randxp);
-
- 		if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += randxp; PInfo[playerid][CurrentXP] = randxp; }
-	 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += randxp; PInfo[playerid][CurrentXP] = randxp; }
-		else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += randxp; PInfo[playerid][CurrentXP] = randxp; }
+        PInfo[playerid][XP] += randxp;
+		PInfo[playerid][CurrentXP] = randxp;
 
         CheckRankup(playerid);
 
@@ -10903,9 +10897,54 @@ public OnPlayerPickUpDynamicPickup(playerid, pickupid)
 	    TextDrawShowForPlayer(playerid, GainXPTD[playerid]);
 	    PlaySound(playerid, 1083);
 
+		Winner = 1;
+		PumpkinOn = 0;
+		KillTimer(timer_pump);
+		SendFMessageToAll(COLOR_MAUVE, "» Pumpkin was found by %s. His wish him congratulations!", GetPName(playerid));
+		gettime(Hour, Minute, Second);
+		SendFMessageToAll(COLOR_MAUVE, "» A new pumpkin will be hidden in %d minutes.", Minutes-Minute+10);
+		SendFMessage(playerid, white, "» {2C8522}You won the sum of %d XP !", randxp);
+		
 	    DestroyDynamicPickup(Pumpkin);
 	}
 	return 1;
+}
+
+function PumpkinFix()
+{
+	foreach(new i:Player)
+	{
+		if(IsPlayerInRangeOfPoint(i, 1.5, PX, PY, PZ))
+		{
+		    new
+				string[256],
+				randxp = 10 + random(25),
+				Hour, Minute, Second;
+
+		    PInfo[i][XP] += randxp;
+			PInfo[i][CurrentXP] = randxp;
+
+		    CheckRankup(i);
+
+			format(string,sizeof string,"+%i XP",PInfo[i][CurrentXP]);
+			TextDrawSetString(GainXPTD[i],string);
+			PInfo[i][ShowingXP] = 1;
+			SetTimerEx("ShowXP1", 300, 0, "i", i);
+		    TextDrawShowForPlayer(i, GainXPTD[i]);
+		    PlaySound(i, 1083);
+
+			Winner = 1;
+			PumpkinOn = 0;
+			SendFMessageToAll(COLOR_MAUVE, "» Pumpkin was found by %s. His wish him congratulations!", GetPName(i));
+			gettime(Hour, Minute, Second);
+			SendFMessageToAll(COLOR_MAUVE, "» A new pumpkin will be hidden in %d minutes.", Minutes-Minute+10);
+			SendFMessage(i, white, "» {2C8522}You won the sum of %d XP !", randxp);
+
+		    DestroyDynamicPickup(Pumpkin);
+		    KillTimer(timer_pump);
+		}
+	}
+    return 1;
 }
 
 function Flashbang(playerid)
@@ -12006,6 +12045,10 @@ function HalloweenEvent()
 	Winner = 0;
 	Number = rand;
 	Pumpkin = CreateDynamicPickup(19320, 23, RandomPositions[rand][0], RandomPositions[rand][1], RandomPositions[rand][2]);
+
+	PX = RandomPositions[rand][0], PY = RandomPositions[rand][1], PZ = RandomPositions[rand][2];
+
+    timer_pump = SetTimer("PumpkinFix", 800, true);
 
 	SendClientMessageToAll(COLOR_DARKMAUVE, "[ » ] Halloween Event [ « ]");
 	format(string, sizeof(string), "» A new pumpkin was hidding in the area: %s.", LocationsName[rand]);
