@@ -117,7 +117,7 @@ new MAX_CP_CLEARED = 6;
 
 #define IRC_SERVER 	"irc.gigairc.net"
 #define IRC_PORT 	(6668)
-#define IRC_CHANNEL "#eG"
+#define IRC_CHANNEL "#eG1"
 #define MAX_BOTS 	(2)
 
 new
@@ -941,8 +941,10 @@ new AODSkin[MAX_PLAYERS],
 	HTimer,
 	RandomCPTimer;
 
+new bool:cp_auto = false;
 
-new timer_update_stats, timer_dizzy,timer_marker,timer_fiveseconds,timer_randommessage,timer_antifake,timer_anti_wep;
+new timer_update_stats, timer_dizzy,timer_marker,timer_fiveseconds,timer_randommessage,timer_antifake,timer_anti_wep,timer_airdt,timer_hwps;
+new Float:obj_pos[6];
 
 public OnGameModeInit()
 {
@@ -982,6 +984,8 @@ public OnGameModeInit()
 	AirDTimer = SetTimer("AirDropTimer", 1020000, false);
 	timer_antifake = SetTimer("FakekillT", 600, true);
 	timer_anti_wep = SetTimer("anti_wep_hax",ANTI_WEP_HAX_TIMER,true);
+	timer_airdt = SetTimer("ADT", 5000, true);
+	timer_hwps = SetTimer("HoldWps", 900, true);
 
     ShowPlayerMarkers(0);
     EnableStuntBonusForAll(0);
@@ -1698,6 +1702,8 @@ public OnGameModeExit()
     KillTimer(timer_randommessage);
     KillTimer(timer_antifake);
     KillTimer(timer_anti_wep);
+    KillTimer(timer_airdt);
+    KillTimer(timer_hwps);
     //KillTimer()
     for(new i; i < MAX_PLAYERS;i++)
 	{
@@ -1715,6 +1721,7 @@ public OnGameModeExit()
 	{
 	    DestroyObject(EndObjects[i]);
 	}
+	cp_auto = false;
 	return 1;
 }
 
@@ -3096,10 +3103,6 @@ public OnRconLoginAttempt(ip[], password[], success) // ANTI-FAILED-RCON-LOGIN: 
     return 1;
 }
 
-CMD:infect(playerid,params[])
-{
-    InfectPlayer(playerid);
-}
 
 CMD:ircpm(playerid,params[])
 {
@@ -3111,7 +3114,7 @@ CMD:ircpm(playerid,params[])
     if(!anti_ip(temp))
 	{
 	    SendFMessage(playerid, 0xFFCC2299, "[IRC PM] %s(%d): %s",GetPName(playerid),playerid,text);
-	    
+
 	    format(string, sizeof(string), "7,1PM from %s(%d) to IRC: %s",GetPName(playerid),playerid,text);
 	    IRC_GroupSay(gGroupID, IRC_CHANNEL, string);
 	}
@@ -4708,7 +4711,7 @@ CMD:ban(playerid,params[])
     format(DB_Query, sizeof(DB_Query), "");
 	strcat(DB_Query, "UPDATE USERS SET ");
 	format(str, 64, "Banned = '%d'", 1); strcat(DB_Query, str);
-    format(str, 64, " WHERE NAME = '%s'", GetPName(playerid)); strcat(DB_Query, str);
+    format(str, 64, " WHERE NAME = '%s'", GetPName(id)); strcat(DB_Query, str);
 	db_query(Database, DB_Query);
 
 	format(string,sizeof string,"%s has banned %s.",GetPName(playerid),GetPName(id));
@@ -5251,11 +5254,12 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 		}
 		else if(Team[playerid] == HUMAN)
 		{
-	    	new Float:obj_pos[3];
-			GetObjectPos(airdropitem, obj_pos[0], obj_pos[1], obj_pos[2]);
-			if(IsPlayerInRangeOfPoint(playerid, 2.5, obj_pos[0], obj_pos[1], obj_pos[2]))
+	    	new Float:obj_pos2[3];
+			GetObjectPos(airdropitem, obj_pos2[0], obj_pos2[1], obj_pos2[2]);
+			if(AirDroppedItem{airdropitem} == true) return 1;
+			if(HasGettedDropItem{playerid} == true) return 1;
+			if(IsPlayerInRangeOfPoint(playerid, 2.5, obj_pos2[0], obj_pos2[1], obj_pos2[2]))
 			{
-			    if(HasGettedDropItem{playerid} == true) return 1;
 			    new rand = random(6);
 				switch(rand)
 				{
@@ -5299,7 +5303,6 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			}
 		}
 	}
-
  	if(CheckCrouch[playerid] == 1)
 	{
         switch(WeaponID[playerid])
@@ -5363,6 +5366,8 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 	{
 	    if(PInfo[playerid][SPerk] == 9)
 	    {
+	        if(Team[playerid] == ZOMBIE) return 0;
+		    if(PInfo[playerid][ZombieBait] == 1) return SendClientMessage(playerid, white, "* "cred"You have to wait three minuts to use the zombie bait perk.");
 		    new string[70];
 			if(CA_IsPlayerBlocked(playerid, 3.0, -1.0))
 		    {
@@ -5370,8 +5375,6 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			}
 			else
 			{
-			    if(Team[playerid] == ZOMBIE) return 0;
-		    	if(PInfo[playerid][ZombieBait] == 1) return SendClientMessage(playerid, white, "* "cred"You have to wait three minuts to use the zombie bait perk.");
 			    DropItem(playerid, 2908, -0.01, 3.35, 0.0, 93.7, 120.0);
 			    //GetPlayerPos(playerid, PInfo[playerid][ZX], PInfo[playerid][ZY], PInfo[playerid][ZZ]);
 			    format(string,sizeof string,""cjam"%s(%i) has dropped some zombie bait",GetPName(playerid),playerid);
@@ -6628,7 +6631,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 			if(TimesGettedAirDrop == MAX_GET_AIRDROP)
 			{
 			    DestroyObject(airdropitem);
-			    RemovePlayerMapIcon(playerid, 50);
+			    foreach(new i:Player) RemovePlayerMapIcon(i, 50);
 			    TimesGettedAirDrop = 0;
 			    return 1;
 			}
@@ -7856,37 +7859,14 @@ public OnPlayerUpdate(playerid)
 	{
 		g_EnterAnim{playerid} = true;
 	}
-	if(GetPlayerSpecialAction(playerid) == SPECIAL_ACTION_USEJETPACK)
-	{
-		SendFMessageToAll(white, "[Anti-Cheats] "cred"''%s'' has been kicked from the server. (Reason: Jetpack Hack Detected!)", GetPName(playerid));
-		KickEx(playerid);
-	}
-	if(GetPlayerMoney(playerid) > 0)
-	{
-	    SendFMessageToAll(white, "[Anti-Cheats] "cred"''%s'' has been kicked from the server. (Reason: Money Hack Detected!)", GetPName(playerid));
-		KickEx(playerid);
-	}
+	
 	if(aDuty{playerid} == true && PInfo[playerid][Level] > 0)
 	{
 	    new Float:hp;
 	    GetPlayerHealth(playerid, hp);
 	    if(hp < 100) SetPlayerHealth(playerid, 100);
 	}
-	new Float:obj_pos[6];
-	GetObjectPos(airdropitem, obj_pos[0], obj_pos[1], obj_pos[2]);
-	if(AirDroppedItem{airdropitem} == true && obj_pos[2] == caZAirdrop2)
-	{
-	    GetObjectPos(airdropitem, obj_pos[3], obj_pos[4], obj_pos[5]);
-	    DestroyObject(airdropitem);
-    	airdropitem = CreateObject(2919, obj_pos[3], obj_pos[4], obj_pos[5]-6.9, 0.0, 0.0, 90.0);
-    	AirDroppedItem{airdropitem} = false;
-
-    	foreach(new i:Player)
-		{
-			if(Team[i] == HUMAN) SetPlayerMapIcon(i, 50, obj_pos[3], obj_pos[4], obj_pos[5], 5, 0, MAPICON_LOCAL);
-		}
-	}
-
+	
     new Keys, ud, lr;
     GetPlayerKeys(playerid, Keys, ud, lr);
     if(CheckCrouch[playerid] == 1)
@@ -7917,38 +7897,7 @@ public OnPlayerUpdate(playerid)
 		    RemovePlayerAttachedObject(playerid, 5);
 		}
 	}
-    if(GetPlayerState(playerid)==PLAYER_STATE_ONFOOT)
-	{
-		new weaponid=GetPlayerWeapon(playerid),oldweapontype = GetWeaponType(OldWeapon[playerid]);
-		new weapontype=GetWeaponType(weaponid);
-		if(HoldingWeapon[playerid] == weaponid)
-		    StopPlayerHoldingObject(playerid);
-
-		if(Team[playerid] == ZOMBIE)
-		    StopPlayerHoldingObject(playerid);
-
-		if(OldWeapon[playerid] != weaponid)
-		{
-		    new modelid = GetWeaponModel(OldWeapon[playerid]);
-		    if(modelid != 0 && oldweapontype != WEAPON_TYPE_NONE && oldweapontype != weapontype)
-		    {
-		        HoldingWeapon[playerid]=OldWeapon[playerid];
-		        switch(oldweapontype)
-		        {
-		            case WEAPON_TYPE_LIGHT:
-						SetPlayerHoldingObject(playerid, modelid, 8,0.0,-0.1,0.15, -100.0, 0.0, 0.0);
-
-					case WEAPON_TYPE_MELEE:
-					    SetPlayerHoldingObject(playerid, modelid, 7,0.0,0.0,-0.18, 100.0, 45.0, 0.0);
-
-					case WEAPON_TYPE_HEAVY:
-					    SetPlayerHoldingObject(playerid, modelid, 1, 0.2,-0.125,-0.1,0.0,25.0,180.0);
-		        }
-		    }
-		}
-		if(oldweapontype != weapontype)
-			OldWeapon[playerid] = weaponid;
-	}
+	
 	if(GetPlayerAnimationIndex(playerid))
     {
         new animlib[32];
@@ -9163,54 +9112,73 @@ function CheckCP()
 		{
 		    MyVar[i] = -1;
 		}
-
-		if(floatround(100.0 * floatdiv(infects, PlayersConnected)) <= 20)
+		if(cp_auto != false)
 		{
-		    foreach(new i:Player)
-		    {
-		        if(PInfo[i][Rank] >= 5 && Team[i] == HUMAN)
-		        {
-		            if(counter < 10)
-		            {
-						MyVar[counter] = i;
-						counter++;
-					}
-		        }
-			}
-			new type;
-			if(counter > 5 && PlayersConnected >= 15) // more than 5 high rank players and at least 15 people connected.
-	    	{
-	        	type = 3;
-	    	}
-	    	else if( (counter <= 2 && counter >= 1) && PlayersConnected > 10) // between 1~2 high rank players and more than 10 people connected.
-	    	{
-	        	type = 1;
-	    	}
-	    	else if( (counter > 2 && counter <= 5) && PlayersConnected > 10) // between 3~5 high rank players and more than 10 people connected.
-	    	{
-				type = 2;
-			}
-			else if(counter > 0 && PlayersConnected > 5) // more than 1 high rank players and more than 5 people connected.
-			{
-			    type = 1;
-			}
 
-			for(new x=0; x < type; x++)
+			if(floatround(100.0 * floatdiv(infects, PlayersConnected)) <= 20)
 			{
-		    	new rand = random(counter);
-		    	if(MyVar[rand] != -1)
+		    	foreach(new i:Player)
+		    	{
+		        	if(PInfo[i][Rank] >= 5 && Team[i] == HUMAN)
+		        	{
+		            	if(counter < 10)
+		            	{
+							MyVar[counter] = i;
+							counter++;
+						}
+		        	}
+				}
+				new type;
+				if(counter > 5 && PlayersConnected >= 15) // more than 5 high rank players and at least 15 people connected.
+	    		{
+	        		type = 3;
+	    		}
+	    		else if( (counter <= 2 && counter >= 1) && PlayersConnected > 10) // between 1~2 high rank players and more than 10 people connected.
+	    		{
+	        		type = 1;
+	    		}
+	    		else if( (counter > 2 && counter <= 5) && PlayersConnected > 10) // between 3~5 high rank players and more than 10 people connected.
+	    		{
+					type = 2;
+				}
+				else if(counter > 0 && PlayersConnected > 5) // more than 1 high rank players and more than 5 people connected.
 				{
-					InfectPlayer(MyVar[rand]);
-					SendFMessageToAll(white, "[Auto Balance] "cred"%s has been auto setted to the zombie team.", GetPName(MyVar[rand]));
-					MyVar[rand] = -1;
-		    	}
+			    	type = 1;
+				}
+				cp_auto = true;
+
+				for(new x=0; x < type; x++)
+				{
+			    	new rand = random(counter);
+		    		if(MyVar[rand] != -1)
+					{
+						if(IsPlayerInAnyVehicle(MyVar[rand]))
+					    	RemovePlayerFromVehicle(MyVar[rand]);
+
+						InfectPlayer(MyVar[rand]);
+						new playerid = MyVar[rand];
+						new string2[45];
+    					if(PInfo[playerid][Premium] == 1) {
+							format(string2,sizeof string2,""cgold"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]); }
+						else if(PInfo[playerid][Premium] == 2) {
+		    				format(string2,sizeof string2,""cplat"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]); }
+						else {
+			    			format(string2,sizeof string2,""cpurple"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]); }
+
+						Update3DTextLabelText(PInfo[playerid][Ranklabel],0x00E800FF,string2);
+
+						SendFMessageToAll(white, "[Auto Balance] "cred"%s has been auto setted to the zombie team.", GetPName(MyVar[rand]));
+						MyVar[rand] = -1;
+			    	}
+				}
 			}
 		}
-
 	}
 	if(CPValue >= CPVALUE)
 	{
 	    CPscleared++;
+	    if(cp_auto == true)
+			cp_auto =  false;
 	    new string2[45];
    		format(string2,sizeof string2,"~w~Checkpoints_cleared____~r~%i~w~/%i",CPscleared, MAX_CP_CLEARED);
    		TextDrawSetString(CPSCleared,string2);
@@ -10205,7 +10173,7 @@ function StopBait(playerid)
 	}
 	PInfo[playerid][ZX] = 0.0;
 	DestroyObject(PInfo[playerid][ZObject]);
-	PInfo[playerid][ZombieBait] = 0;
+	//PInfo[playerid][ZombieBait] = 0;
 	return 1;
 }
 
@@ -10633,7 +10601,7 @@ function FiveSeconds()
 
 			if(RoundEnded == 0)
 		    {
-				SetTimerEx("EndRound",3000,false,"i",1);
+				SetTimerEx("EndRound",3000,false,"i",2);
 				GameTextForAll("~w~The round has ended.",3000,3);
 				RoundEnded = 1;
 			}
@@ -11504,6 +11472,7 @@ stock InfectPlayer(playerid)
     GameTextForPlayer(playerid,"~r~~h~Infected!",4000,3);
     SetPlayerColor(playerid,purple);
 	PInfo[playerid][DeathsRound]++;
+	SetPlayerInterior(playerid, 0);
 	return 1;
 }
 
@@ -11826,21 +11795,21 @@ stock CA_FindGroundZ(Float:x, Float:y, Float:z, &Float:gZ)
 public OnPlayerAirbreak(playerid)
 {
 	if(PInfo[playerid][Level] > 4) return 1;
-    new string[128], str[64];
-    format(string, sizeof(string), " || Gamemode detected %s cheating and he has been banned - Reason: Airbreaking ||.",GetPName(playerid));
+    new string[128];
+    format(string, sizeof(string), " || Gamemode detected %s cheating and he has been kicked ||.",GetPName(playerid));
     SendClientMessageToAll(red, string);
-    SendClientMessage(playerid,red, "It's an error? Take a screenshot (F8), go to www.eternal-games.net and apply to get unbanned.");
-    format(string, sizeof(string), " || Gamemode detected %s cheating - Reason: Airbreaking ||.",GetPName(playerid));
-    SendAdminMessage(red, string);
+    //SendClientMessage(playerid,red, "It's an error? Take a screenshot (F8), go to www.eternal-games.net and apply to get unbanned.");
+    //format(string, sizeof(string), " || Gamemode detected %s cheating - Reason: Airbreaking ||.",GetPName(playerid));
+    //SendAdminMessage(red, string);
 
-	format(DB_Query, sizeof(DB_Query), "");
+	/*format(DB_Query, sizeof(DB_Query), "");
 	strcat(DB_Query, "UPDATE USERS SET ");
 	format(str, 64, "BANNED = '%d'", 1); strcat(DB_Query, str);
     format(str, 64, " WHERE NAME = '%s'", GetPName(playerid)); strcat(DB_Query, str);
-	db_query(Database, DB_Query);
+	db_query(Database, DB_Query);*/
 
-    P_BanEx(playerid, "Airbreak");
-    SaveIn("Banlog",string,1);
+    KickEx(playerid);
+    //SaveIn("Banlog",string,1);
     return 1;
 }
 
@@ -12462,6 +12431,16 @@ function anti_wep_hax()
                 	}
             	}
         	}
+        	if(GetPlayerSpecialAction(i) == SPECIAL_ACTION_USEJETPACK)
+			{
+				SendFMessageToAll(white, "[Anti-Cheats] "cred"''%s'' has been kicked from the server. (Reason: Jetpack Hack Detected!)", GetPName(i));
+				KickEx(i);
+			}
+			if(GetPlayerMoney(i) > 0)
+			{
+			    SendFMessageToAll(white, "[Anti-Cheats] "cred"''%s'' has been kicked from the server. (Reason: Money Hack Detected!)", GetPName(i));
+				KickEx(i);
+			}
 		}
     }
 }
@@ -12560,6 +12539,74 @@ stock ServerObjects()
 		}
 	}
 	printf("Loaded %d objetcs",objetcs);
+}
+
+function ADT()
+{
+	GetObjectPos(airdropitem, obj_pos[0], obj_pos[1], obj_pos[2]);
+	if(AirDroppedItem{airdropitem} == true && obj_pos[2] == caZAirdrop2)
+	{
+	    GetObjectPos(airdropitem, obj_pos[3], obj_pos[4], obj_pos[5]);
+	    DestroyObject(airdropitem);
+    	airdropitem = CreateObject(2919, obj_pos[3], obj_pos[4], obj_pos[5]-6.9, 0.0, 0.0, 90.0);
+    	AirDroppedItem{airdropitem} = false;
+	}
+
+	if(AirDroppedItem{airdropitem} == false)
+	{
+	    new Float:obj_pos2[3];
+		GetObjectPos(airdropitem, obj_pos2[0], obj_pos2[1], obj_pos2[2]);
+	    foreach(new i:Player)
+		{
+			if(Team[i] == HUMAN)
+			{
+			    if(obj_pos2[0] == obj_pos[3] && obj_pos2[1] == obj_pos[4] && obj_pos2[2] == obj_pos[5]) return 1;
+				RemovePlayerMapIcon(i, 50);
+				SetPlayerMapIcon(i, 50, obj_pos2[0], obj_pos2[1], obj_pos2[2], 5, 0, MAPICON_LOCAL);
+			}
+		}
+	}
+	return 1;
+}
+
+function HoldWps()
+{
+	foreach(new i:Player)
+	{
+	    if(GetPlayerState(i)==PLAYER_STATE_ONFOOT)
+		{
+			new weaponid=GetPlayerWeapon(i),oldweapontype = GetWeaponType(OldWeapon[i]);
+			new weapontype=GetWeaponType(weaponid);
+			if(HoldingWeapon[i] == weaponid)
+			    StopPlayerHoldingObject(i);
+
+			if(Team[i] == ZOMBIE)
+			    StopPlayerHoldingObject(i);
+
+			if(OldWeapon[i] != weaponid)
+			{
+			    new modelid = GetWeaponModel(OldWeapon[i]);
+			    if(modelid != 0 && oldweapontype != WEAPON_TYPE_NONE && oldweapontype != weapontype)
+			    {
+			        HoldingWeapon[i]=OldWeapon[i];
+			        switch(oldweapontype)
+			        {
+			            case WEAPON_TYPE_LIGHT:
+							SetPlayerHoldingObject(i, modelid, 8,0.0,-0.1,0.15, -100.0, 0.0, 0.0);
+
+						case WEAPON_TYPE_MELEE:
+						    SetPlayerHoldingObject(i, modelid, 7,0.0,0.0,-0.18, 100.0, 45.0, 0.0);
+
+						case WEAPON_TYPE_HEAVY:
+						    SetPlayerHoldingObject(i, modelid, 1, 0.2,-0.125,-0.1,0.0,25.0,180.0);
+			        }
+			    }
+			}
+			if(oldweapontype != weapontype)
+				OldWeapon[i] = weaponid;
+		}
+	}
+	return 1;
 }
 
 function ZHideAgain(playerid) CanHide{playerid} = true;
