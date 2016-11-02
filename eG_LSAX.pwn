@@ -946,6 +946,7 @@ new bool:cp_auto = false;
 new timer_update_stats, timer_dizzy,timer_marker,timer_fiveseconds,timer_randommessage,timer_antifake,timer_anti_wep,timer_airdt,timer_hwps, timer_pump;
 new Float:obj_pos[6];
 new Float:PX, Float:PY, Float:PZ;
+new bool:GotXPFromPump[MAX_PLAYERS];
 
 public OnGameModeInit()
 {
@@ -2277,7 +2278,17 @@ public OnPlayerDeath(playerid,killerid,reason)
   		GetPlayerFacingAngle(playerid, ZPS[playerid][3]);
 		SetSpawnInfo(playerid, 0, ZombieSkins[random(sizeof(ZombieSkins))], ZPS[playerid][0], ZPS[playerid][1], ZPS[playerid][2], ZPS[playerid][3], 0, 0, 0, 0, 0, 0);
 		SpawnPlayer(playerid);
-		new string[256];
+		new string[256], string2[64];
+		
+ 		if(PInfo[playerid][Premium] == 1) {
+			format(string2,sizeof string2,""cgold"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]); }
+		else if(PInfo[playerid][Premium] == 2) {
+		    format(string2,sizeof string2,""cplat"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]); }
+		else {
+		    format(string2,sizeof string2,""cpurple"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]); }
+
+		Update3DTextLabelText(PInfo[playerid][Ranklabel],purple,string2);
+		
 		format(string,sizeof string,"Rank:_%i~n~Infects:_%i~n~Deaths:_%i~n~Bites:_%i~n~Perk:_%i~n~Assists:_%i~n~Vomited:_%i",
 				PInfo[playerid][Rank],
 				PInfo[playerid][Infects],
@@ -2328,7 +2339,7 @@ public OnPlayerDeath(playerid,killerid,reason)
 			else {
 			    format(string2,sizeof string2,""cpurple"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]); }
 
-			Update3DTextLabelText(PInfo[playerid][Ranklabel],0x00E800FF,string2);
+			Update3DTextLabelText(PInfo[playerid][Ranklabel],purple,string2);
 		}
 	    else
 	    {
@@ -2726,6 +2737,7 @@ public OnPlayerDisconnect(playerid,reason)
     KillTimer(PingTimer[playerid]);
     Streaks[playerid] = 0;
     PInfo[playerid][Lighton] = false;
+    GotXPFromPump[playerid] = false;
     PInfo[playerid][KillsRound] = 0;
     PInfo[playerid][InfectsRound] = 0;
     PInfo[playerid][DeathsRound] = 0;
@@ -2823,6 +2835,7 @@ public OnPlayerConnect(playerid)
 
     Streaks[playerid] = 0;
     CanHide{playerid} = true;
+    GotXPFromPump[playerid] = false;
 	PInfo[playerid][P_STATUS] = PS_CONNECTED;
 	CBugTimes[playerid] = 0;
 	SetPlayerWeather(playerid, 9);
@@ -10878,35 +10891,40 @@ public OnPlayerPickUpDynamicPickup(playerid, pickupid)
         }
     }
 
-    if(pickupid == Pumpkin)
+    /*if(pickupid == Pumpkin)
 	{
-		new
-			string[256],
-			randxp = 10 + random(25),
-			Hour, Minute, Second;
+	    if(GotXPFromPump[playerid] == false)
+	    {
+			new
+				string[256],
+				randxp = 10 + random(25),
+				Hour, Minute, Second;
 
-        PInfo[playerid][XP] += randxp;
-		PInfo[playerid][CurrentXP] = randxp;
+	        PInfo[playerid][XP] += randxp;
+			PInfo[playerid][CurrentXP] = randxp;
+			GotXPFromPump[playerid] = true;
 
-        CheckRankup(playerid);
+	        CheckRankup(playerid);
 
-		format(string,sizeof string,"+%i XP",PInfo[playerid][CurrentXP]);
-		TextDrawSetString(GainXPTD[playerid],string);
-		PInfo[playerid][ShowingXP] = 1;
-		SetTimerEx("ShowXP1", 300, 0, "i", playerid);
-	    TextDrawShowForPlayer(playerid, GainXPTD[playerid]);
-	    PlaySound(playerid, 1083);
+			format(string,sizeof string,"+%i XP",PInfo[playerid][CurrentXP]);
+			TextDrawSetString(GainXPTD[playerid],string);
+			PInfo[playerid][ShowingXP] = 1;
+			SetTimerEx("ShowXP1", 300, 0, "i", playerid);
+		    TextDrawShowForPlayer(playerid, GainXPTD[playerid]);
+		    PlaySound(playerid, 1083);
 
-		Winner = 1;
-		PumpkinOn = 0;
-		KillTimer(timer_pump);
-		SendFMessageToAll(COLOR_MAUVE, "» Pumpkin was found by %s. His wish him congratulations!", GetPName(playerid));
-		gettime(Hour, Minute, Second);
-		SendFMessageToAll(COLOR_MAUVE, "» A new pumpkin will be hidden in %d minutes.", Minutes-Minute+10);
-		SendFMessage(playerid, white, "» {2C8522}You won the sum of %d XP !", randxp);
-		
-	    DestroyDynamicPickup(Pumpkin);
-	}
+			Winner = 1;
+			PumpkinOn = 0;
+			KillTimer(timer_pump);
+			SendFMessageToAll(COLOR_MAUVE, "» Pumpkin was found by %s. His wish him congratulations!", GetPName(playerid));
+			gettime(Hour, Minute, Second);
+			SendFMessageToAll(COLOR_MAUVE, "» A new pumpkin will be hidden in %d minutes.", Minutes-Minute+10);
+			SendFMessage(playerid, white, "» {2C8522}You won the sum of %d XP !", randxp);
+
+		    DestroyDynamicPickup(Pumpkin);
+		}
+	    return 1;
+	}*/
 	return 1;
 }
 
@@ -10914,7 +10932,8 @@ function PumpkinFix()
 {
 	foreach(new i:Player)
 	{
-		if(IsPlayerInRangeOfPoint(i, 1.5, PX, PY, PZ))
+	    if(GotXPFromPump[i] != false) return 1;
+		if(IsPlayerInRangeOfPoint(i, 2.5, PX, PY, PZ))
 		{
 		    new
 				string[256],
@@ -10923,6 +10942,7 @@ function PumpkinFix()
 
 		    PInfo[i][XP] += randxp;
 			PInfo[i][CurrentXP] = randxp;
+			GotXPFromPump[i] = true;
 
 		    CheckRankup(i);
 
@@ -10942,6 +10962,7 @@ function PumpkinFix()
 
 		    DestroyDynamicPickup(Pumpkin);
 		    KillTimer(timer_pump);
+		    return 1;
 		}
 	}
     return 1;
@@ -12044,6 +12065,7 @@ function HalloweenEvent()
 
 	Winner = 0;
 	Number = rand;
+	
 	Pumpkin = CreateDynamicPickup(19320, 23, RandomPositions[rand][0], RandomPositions[rand][1], RandomPositions[rand][2]);
 
 	PX = RandomPositions[rand][0], PY = RandomPositions[rand][1], PZ = RandomPositions[rand][2];
@@ -12056,7 +12078,8 @@ function HalloweenEvent()
 	SendClientMessageToAll(COLOR_MAUVE, "» You have 10 minutes to find this pumpkin.");
 
     PumpkinOn = 1;
-
+	foreach(new i:Player) GotXPFromPump[i] = false;
+	
 	new Hour, Minute, Second;
 	gettime(Hour, Minute, Second);
 	Minutes = Minute;
