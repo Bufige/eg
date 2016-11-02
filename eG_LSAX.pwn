@@ -117,7 +117,7 @@ new MAX_CP_CLEARED = 6;
 
 #define IRC_SERVER 	"irc.gigairc.net"
 #define IRC_PORT 	(6668)
-#define IRC_CHANNEL "#eG1"
+#define IRC_CHANNEL "#eG"
 #define MAX_BOTS 	(2)
 
 new
