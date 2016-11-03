@@ -4470,7 +4470,8 @@ CMD:acmds(playerid,params[])
 	if(PInfo[playerid][Level] >= 4) SendClientMessage(playerid, white,""cgreen"Lead admin commands: "cwhite"/sethealth - /setarmour - /rape - /getip - /rangeban - /makeleader - /gotopumpkin");
 	if(PInfo[playerid][Level] >= 5)
 	{
-		SendClientMessage(playerid, white,""cgreen"Head admin commands: "cwhite"/nuke - /savecar - /setlevel (rcon) - /setprem - /setname - /createveh - /airdrop - /gotoairdrop /changepass");
+		SendClientMessage(playerid, white,""cgreen"Head admin commands: "cwhite"/nuke - /savecar - /setlevel (rcon) - /setprem - /setname");
+		SendClientMessage(playerid, white,""cgreen"Head admin commands: "cwhite"/createveh - /airdrop - /gotoairdrop /changepass");
 		SendClientMessage(playerid, white,""cgreen"User's account cmds: "cwhite"/setrank - /setxp - /setkills - /setdeaths - /setinfects - /settks");
 	}
 	return 1;
@@ -5097,6 +5098,23 @@ public OnPlayerTakeDamage(playerid, issuerid, Float: amount, weaponid)
 	        PInfo[playerid][FireObject] = CreateObject(18692,0,0,0,0,0,0,200);
 	        AttachObjectToPlayer(PInfo[playerid][FireObject],playerid,0,0,-0.2,0,0,0);
 	        SetTimerEx("AffectFire",500,false,"ii",playerid,issuerid);
+		}
+		//increased melee damage!!
+		switch(weaponid)
+		{
+		    case 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15:
+		    {
+		        new Float:health;
+		        GetPlayerHealth(playerid,health);
+		        new Float:newh = health - ((amount * 1.5) + PInfo[playerid][Rank]);
+		        if(newh <= 0)
+		        {
+		            OnPlayerDeath(playerid,issuerid,weaponid);
+		            SetPlayerHealth(playerid,0);
+				}
+				else
+		        	SetPlayerHealth(playerid,newh);
+		    }
 		}
 	}
 	else if(Team[issuerid] == ZOMBIE)
@@ -6167,7 +6185,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 				{
 					if(!IsPlayerConnected(i)) continue;
 					if(Team[i] == ZOMBIE) continue;
-					if(IsPlayerInRangeOfPoint(i,15,x,y,z))
+					if(IsPlayerInRangeOfPoint(i,15,x,y,z) && !IsPlayerInAnyVehicle(i))
 					{
 					    if(IsPlayerNPC(i)) return 1;
 					    TogglePlayerControllable(i,0);
