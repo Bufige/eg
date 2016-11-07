@@ -21,10 +21,12 @@
 //============================= [Includes] =====================================
 #include "../include/gl_common.inc"
 //============================= [Settings] =====================================
+
+#define MAP_NAME                                                        "md"
 #define Userfile 														"Admin/Users/%s.ini"
 #define snowing                                                         true
 #define Version                                                         "0.2"
-#define MAX_CONNECTIONS_FROM_IP              							3
+#define MAX_CONNECTIONS_FROM_IP                                         4
 #define MAX_STRING 														144 // chat text can hold that much.
 
 #undef  MAX_PLAYERS
@@ -877,11 +879,11 @@ new bool:aDuty[MAX_PLAYERS char],
 new Streaks[MAX_PLAYERS];
 
 new
-	Pumpkin,
+	TikiStatue,
 	Winner,
 	Number,
 	Minutes,
-	PumpkinOn;
+	TikiStatueOn;
 
 new Float: RandomPositions[24][3] = {
 	{1767.807861, -1932.837402, 13.595355},
@@ -948,6 +950,37 @@ new Float:obj_pos[6];
 new Float:PX, Float:PY, Float:PZ;
 new bool:GotXPFromPump[MAX_PLAYERS];
 
+
+new soap_id = -1,nikolai_id = -1;
+
+
+forward npc_fix();
+public npc_fix()
+{
+	if(soap_id == -1)
+	{
+	    ConnectNPC("Sgt_Soap","npc2");
+	    if(nikolai_id == -1)
+		{
+	    	ConnectNPC("Sgt_Nikolai","npc_airdrop");
+	    	SetTimer("npc_fix", 5000, false);
+		}
+		else
+	    	SetTimer("npc_fix", 5000, false);
+	}
+	if(nikolai_id == -1)
+	{
+	    ConnectNPC("Sgt_Nikolai","npc_airdrop");
+	    if(soap_id == -1)
+		{
+	    	ConnectNPC("Sgt_Soap","npc_airdrop");
+	    	SetTimer("npc_fix", 5000, false);
+		}
+		else
+	    	SetTimer("npc_fix", 5000, false);
+	}
+}
+
 public OnGameModeInit()
 {
 	// Wait 5 seconds for the first bot
@@ -956,6 +989,8 @@ public OnGameModeInit()
 	SetTimerEx("IRC_ConnectDelay", 10000, 0, "d", 2);
 	// Create a group (the bots will be added to it upon connect)
 	gGroupID = IRC_CreateGroup();
+
+	soap_id = -1,nikolai_id = -1;
 
     ConnectNPC("Sgt_Soap","npc2");
     ConnectNPC("Sgt_Nikolai","npc_airdrop");
@@ -971,6 +1006,7 @@ public OnGameModeInit()
 	SendRconCommand("minconnectiontime 	3000");
 	SendRconCommand("ackslimit 			5000");
 
+
     CA_Init();
 
 	SetTimer("ServerSettings", 10, false);
@@ -982,7 +1018,7 @@ public OnGameModeInit()
 	timer_fiveseconds = SetTimer("FiveSeconds", 3000, true);
 	SetTimer("RandomMessage", 500000, true);
 
-	HTimer = SetTimer("HalloweenEvent", 600000, true);
+	HTimer = SetTimer("TikiEvent", 600000, true);
 	AirDTimer = SetTimer("AirDropTimer", 1020000, false);
 	timer_antifake = SetTimer("FakekillT", 600, true);
 	timer_anti_wep = SetTimer("anti_wep_hax",ANTI_WEP_HAX_TIMER,true);
@@ -1001,7 +1037,7 @@ public OnGameModeInit()
 	CPID = -1;
 	CPscleared = 0;
 	RoundEnded = 0;
-	PumpkinOn = 0;
+	TikiStatueOn = 0;
 	Extra3CPs = 0;
 	foreach(new i:Player) PInfo[i][Lighton] = false;
 
@@ -1610,6 +1646,9 @@ public OnGameModeInit()
 	TextDrawSetOutline(Effect[7],1);
 	TextDrawSetProportional(Effect[7],1);
 	TextDrawSetShadow(Effect[7],1);
+
+
+	npc_fix();
 	return 1;
 }
 
@@ -1730,6 +1769,16 @@ public OnGameModeExit()
 
 public OnPlayerRequestClass(playerid, classid)
 {
+	if(IsPlayerNPC(playerid))
+	{
+	    if(!strcmp(GetPName(playerid), "Sgt__Soap", true))
+      	{
+      	    printf("BOOOT1:%s",GetPName(playerid));
+      	    Kick(playerid);
+      	}
+	    return 1;
+	}
+
 	if(PInfo[playerid][P_STATUS] == PS_CONNECTED)
 	{
         TogglePlayerSpectating(playerid, true);
@@ -1816,6 +1865,11 @@ public OnPlayerSpawn(playerid)
 
 			GetVehicleParamsEx(NPCVehicle3, enginem, lights, alarm, doors, bonnet, boot, objective);
 			SetVehicleParamsEx(NPCVehicle3, VEHICLE_PARAMS_ON, VEHICLE_PARAMS_ON, alarm, doors, bonnet, boot, objective);
+      	}
+      	if(!strcmp(npcname, "Sgt__Soap", true))
+      	{
+      	    printf("BOOOT:%s",npcname);
+      	    Kick(playerid);
       	}
   		return 1;
   	}
@@ -2279,7 +2333,7 @@ public OnPlayerDeath(playerid,killerid,reason)
 		SetSpawnInfo(playerid, 0, ZombieSkins[random(sizeof(ZombieSkins))], ZPS[playerid][0], ZPS[playerid][1], ZPS[playerid][2], ZPS[playerid][3], 0, 0, 0, 0, 0, 0);
 		SpawnPlayer(playerid);
 		new string[256], string2[64];
-		
+
  		if(PInfo[playerid][Premium] == 1) {
 			format(string2,sizeof string2,""cgold"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]); }
 		else if(PInfo[playerid][Premium] == 2) {
@@ -2288,7 +2342,7 @@ public OnPlayerDeath(playerid,killerid,reason)
 		    format(string2,sizeof string2,""cpurple"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]); }
 
 		Update3DTextLabelText(PInfo[playerid][Ranklabel],purple,string2);
-		
+
 		format(string,sizeof string,"Rank:_%i~n~Infects:_%i~n~Deaths:_%i~n~Bites:_%i~n~Perk:_%i~n~Assists:_%i~n~Vomited:_%i",
 				PInfo[playerid][Rank],
 				PInfo[playerid][Infects],
@@ -2820,13 +2874,19 @@ public OnPlayerConnect(playerid)
     	    SetPlayerColor(playerid, 0x5E610BFF);
 	      	PutPlayerInVehicle(playerid, NPCVehicle2, 0);
 	      	SpawnPlayer(playerid);
+	      	soap_id = playerid;
       	}
       	if(!strcmp(npcname, "Sgt_Nikolai", true))
     	{
     	    SetPlayerColor(playerid, 0x5E610BFF);
 	      	PutPlayerInVehicle(playerid, NPCVehicle3, 0);
 	      	SpawnPlayer(playerid);
+	      	nikolai_id = playerid;
       	}
+      	if(!strcmp(npcname, "Sgt__Soap", true))
+		{
+		 //   Kick(playerid);
+		}
   		return 1;
   	}
 
@@ -3503,14 +3563,14 @@ CMD:animsoff(playerid, params[])
     return 1;
 }
 
-CMD:gotopumpkin(playerid, params[])
+CMD:gototiki(playerid, params[])
 {
 	if(PInfo[playerid][Level] < 4) return SendClientMessage(playerid, white, "* "cred"You have to be administrator to use this command.");
-	if(PumpkinOn == 0) return SendClientMessage(playerid, -1, "Pumpkin isn't spawned.");
-	if(Winner == 1) return SendClientMessage(playerid, -1, "There is no pumpkin spawn.");
+	if(TikiStatueOn == 0) return SendClientMessage(playerid, -1, "Tiki isn't spawned.");
+	if(Winner == 1) return SendClientMessage(playerid, -1, "There is no Tiki spawn.");
 	if(GetPlayerState(playerid) == 2) SetVehiclePos(GetPlayerVehicleID(playerid), RandomPositions[Number][0], RandomPositions[Number][1]+5, RandomPositions[Number][2]);
 	else SetPlayerPos(playerid, RandomPositions[Number][0], RandomPositions[Number][1]+5, RandomPositions[Number][2]);
-	SendClientMessage(playerid, -1, "You've been teleported near the pumpkin.");
+	SendClientMessage(playerid, -1, "You've been teleported near the tiki.");
 	return 1;
 }
 
@@ -4467,7 +4527,7 @@ CMD:acmds(playerid,params[])
 	}
 	if(PInfo[playerid][Level] >= 2) SendClientMessage(playerid, white,""cgreen"General admin commands: "cwhite"/goto - /get - /warn - /setint - /setvw - /say");
 	if(PInfo[playerid][Level] >= 3) SendClientMessage(playerid, white,""cgreen"Senior admin commands: "cwhite"/heal - /bslap - /ban - /announce");
-	if(PInfo[playerid][Level] >= 4) SendClientMessage(playerid, white,""cgreen"Lead admin commands: "cwhite"/sethealth - /setarmour - /rape - /getip - /rangeban - /makeleader - /gotopumpkin");
+	if(PInfo[playerid][Level] >= 4) SendClientMessage(playerid, white,""cgreen"Lead admin commands: "cwhite"/sethealth - /setarmour - /rape - /getip - /rangeban - /makeleader - /gototiki");
 	if(PInfo[playerid][Level] >= 5)
 	{
 		SendClientMessage(playerid, white,""cgreen"Head admin commands: "cwhite"/nuke - /savecar - /setlevel (rcon) - /setprem - /setname");
@@ -5100,22 +5160,38 @@ public OnPlayerTakeDamage(playerid, issuerid, Float: amount, weaponid)
 	        SetTimerEx("AffectFire",500,false,"ii",playerid,issuerid);
 		}
 		//increased melee damage!!
+		new damage;
+		new Float:health;
+		GetPlayerHealth(playerid,health);
 		switch(weaponid)
 		{
-		    case 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15:
+		    case 1,2,4:
 		    {
-		        new Float:health;
-		        GetPlayerHealth(playerid,health);
-		        new Float:newh = health - ((amount * 1.5) + PInfo[playerid][Rank]);
-		        if(newh <= 0)
-		        {
-		            OnPlayerDeath(playerid,issuerid,weaponid);
-		            SetPlayerHealth(playerid,0);
-				}
-				else
-		        	SetPlayerHealth(playerid,newh);
+		        damage = 25 + PInfo[issuerid][Rank];
+		        new Float:newh = health - damage;
+				if(newh <= 0)
+				{
+					OnPlayerDeath(playerid,issuerid,weaponid);
+		    		SetPlayerHealth(playerid,0);
+   				}
+   				else
+		   			SetPlayerHealth(playerid,newh);
 		    }
+		    case 3,5,6,7,8,9,10:
+		    {
+		        damage = 30 + PInfo[issuerid][Rank];
+		        new Float:newh = health - damage;
+				if(newh <= 0)
+				{
+					OnPlayerDeath(playerid,issuerid,weaponid);
+		    		SetPlayerHealth(playerid,0);
+   				}
+   				else
+		   			SetPlayerHealth(playerid,newh);
+		    }
+
 		}
+
 	}
 	else if(Team[issuerid] == ZOMBIE)
 	{
@@ -5262,17 +5338,20 @@ public OnPlayerEnterVehicle(playerid,vehicleid, ispassenger)
 public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 {
 	if(IsPlayerNPC(playerid)) return 1;
-	else if((newkeys & KEY_NO) && !(oldkeys & KEY_NO))
+	if(PRESSED(KEY_NO) )
+	//else if((newkeys & KEY_NO) && !(oldkeys & KEY_NO))
 	{
 	    if(Team[playerid] == ZOMBIE) return 0;
         ShowInventory(playerid);
 	}
-	else if((newkeys & KEY_YES) && !(oldkeys & KEY_YES))
+	if(PRESSED(KEY_YES) )
+	//else if((newkeys & KEY_YES) && !(oldkeys & KEY_YES))
 	{
  		if(Team[playerid] == HUMAN) ShowPlayerHumanPerks(playerid);
 		if(Team[playerid] == ZOMBIE) ShowPlayerZombiePerks(playerid);
 	}
-    else if(newkeys & KEY_CROUCH)
+	if(PRESSED(KEY_CROUCH) )
+    //else if(newkeys & KEY_CROUCH)
 	{
 		if(Team[playerid] == ZOMBIE)
 		{
@@ -5395,7 +5474,8 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
             }
         }
     }
-	if((newkeys & KEY_WALK) && (newkeys & KEY_CROUCH))
+    if(PRESSED(KEY_FIRE | KEY_CROUCH) )
+	//if((newkeys & KEY_WALK) && (newkeys & KEY_CROUCH))
 	{
 	    if(PInfo[playerid][SPerk] == 9)
 	    {
@@ -5428,12 +5508,12 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			PInfo[playerid][Flare] = CreateObject(18728,x,y,z-1,0,0,0,200);
 		}
 	}
-	if((newkeys & KEY_SPRINT) && (newkeys & KEY_CROUCH))
+	if(PRESSED(KEY_SPRINT | KEY_CROUCH))
+	//if((newkeys & KEY_SPRINT) && (newkeys & KEY_CROUCH))
 	{
 	    if(IsPlayerInAnyVehicle(playerid)) return 0;
 		if(Team[playerid] == HUMAN && PInfo[playerid][SPerk] == 6)
 		{
-		    print("Player Perk = Burst run");
 		    if(PInfo[playerid][CanBurst] == 0) return SendClientMessage(playerid,white,"» "cred"You are too tired to jump that far.");
       		new Float: X, Float: Y, Float: Z, Float: ROT;
 			GetPlayerVelocity(playerid, X, Y, Z);
@@ -5442,7 +5522,6 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			Y += floatmul(floatcos(-ROT, degrees), 0.60);
 			SetPlayerVelocity(playerid, X, Y, Z+0.5);
 			PInfo[playerid][CanBurst] = 0;
-			print("Perk used - Jump done");
 			PInfo[playerid][ClearBurst] = SetTimerEx("ClearBurstTimer",120000,false,"i",playerid);
 			new string[64];
 			format(string,sizeof string,""cjam"%s(%i) has gotten a burst of energy.",GetPName(playerid),playerid);
@@ -5522,7 +5601,8 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 		format(string,sizeof string,"~w~You now have ~r~~h~%i ~w~bouncing ~n~~w~Betty's left.",PInfo[playerid][Bettys]);
 		GameTextForPlayer(playerid,string,3000,3);
 	}
-    else if(oldkeys & KEY_FIRE)
+	if(PRESSED(KEY_FIRE))
+    //if(oldkeys & KEY_FIRE)
     {
         if(Team[playerid] == HUMAN)
         {
@@ -5548,8 +5628,8 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			}
         }
     }
-    //if(PRESSED(KEY_CROUCH))
-	else if(newkeys & KEY_CROUCH)
+    if(PRESSED(KEY_CROUCH))
+	//if(newkeys & KEY_CROUCH)
 	{
 	    if(IsPlayerInAnyVehicle(playerid)) return 0;
 	    if(PInfo[playerid][SPerk] == 11)
@@ -6223,7 +6303,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			}
 		}
 	}
-    else if(PRESSED(KEY_JUMP))
+    if(PRESSED(KEY_JUMP))
     {
         if(Team[playerid] == HUMAN)
         {
@@ -6324,7 +6404,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			}
 	    }
 	}
-	else if(PRESSED(KEY_FIRE))
+	if(PRESSED(KEY_FIRE))
 	{
 	    if(PInfo[playerid][StartCar] == 1) return 0;
 	    if(GetPlayerState(playerid) != PLAYER_STATE_DRIVER) return 0;
@@ -6340,7 +6420,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 		SendNearMessage(playerid,white,string,20);
 		PInfo[playerid][StartCar] = 1;
 	}
-	else if(PRESSED(KEY_HANDBRAKE))//Aim Key
+	if(PRESSED(KEY_HANDBRAKE))//Aim Key
 	{
 	    if(Team[playerid] != ZOMBIE) return 0;
 	    if(PInfo[playerid][CanBite] == 0) return 0;
@@ -7360,7 +7440,7 @@ public OnPlayerText(playerid, text[])
 			    else if(PInfo[playerid][Level] == 5) lvl = "Head";
 				else if(PInfo[playerid][Level] == 6) lvl = "Developer";
 
-		        new str[256];
+		        new str[144];
 		        format(str, sizeof str, "{FFFFFF}* %s {78006C}%s: %s", lvl, GetPName(playerid), text[1]);
 		        SendAdminMessage(white, str);
 		        return 0;
@@ -7372,7 +7452,7 @@ public OnPlayerText(playerid, text[])
 		    	if(PInfo[playerid][Premium] == 1) lvl = ""cgold"Gold";
 			    else if(PInfo[playerid][Premium] == 2) lvl = ""cplat"Platinum";
 
-		        new str[256];
+		        new str[144];
 		        format(str, sizeof str, "{FFFFFF}[%s{FFFFFF}] {58D3F7}%s: %s", lvl, GetPName(playerid), text[1]);
 		        SendPremiumMessage(white, str);
 		        return 0;
@@ -7385,19 +7465,22 @@ public OnPlayerText(playerid, text[])
 				format(DB_Query, sizeof(DB_Query), "SELECT NAME FROM CLANS WHERE ID = '%d'", PInfo[playerid][ClanID]);
 				Result = db_query(Database, DB_Query);
 
-		        new str[256];
+		        new str[144], ircMsg[256];
 				for (new a, rows = db_num_rows(Result); a < rows; a++)
 				{
 				    db_get_field(Result, 0, clan_name, sizeof clan_name);
 				    format(str, sizeof str, "{A4A4A4}* {DF013A}[%s] {A4A4A4}%s: %s", clan_name, GetPName(playerid), text[1]);
+				    format(ircMsg, sizeof(ircMsg), "7[%s] 14%s: %s", clan_name, GetPName(playerid), text[1]);
 				}
 				db_free_result(Result);
+				
+				IRC_GroupSay(gGroupID, IRC_CHANNEL, ircMsg);
 		        SendClanMessage(white, str, PInfo[playerid][ClanID]);
 			    return 0;
 		    }
 
 	     	new
-				ircMsg[256];
+				ircMsg[144];
 			if(Team[playerid] == 1) format(ircMsg, sizeof(ircMsg), "03[%d] %s: %s", playerid, GetPName(playerid), text);
 			else if(Team[playerid] == 1) format(ircMsg, sizeof(ircMsg), "02[%d] %s: %s", playerid, GetPName(playerid), text);
 			IRC_GroupSay(gGroupID, IRC_CHANNEL, ircMsg);
@@ -7405,7 +7488,7 @@ public OnPlayerText(playerid, text[])
 		    if(gettime() < PInfo[playerid][P_ANTIFLOOD_TICKCOUNT] + 1) { SendClientMessage(playerid, red, "[Anti Flood] Calm down to send menssages."); return 0; }
 	    	PInfo[playerid][P_ANTIFLOOD_TICKCOUNT] = gettime();
 
-		    new msg[256];
+		    new msg[144];
 		    if(Team[playerid] == 0) format(msg, sizeof(msg), ""cgrey"(ID: %i) %s: "cwhite"%s", playerid, GetPName(playerid), text);
 		    else if(Team[playerid] == 1) format(msg, sizeof(msg), ""cgreen"(ID: %i) %s: "cwhite"%s", playerid, GetPName(playerid), text);
 		    else if(Team[playerid] == 2) format(msg, sizeof(msg), ""cpurple"(ID: %i) %s: "cwhite"%s", playerid, GetPName(playerid), text);
@@ -7540,7 +7623,7 @@ public OnPlayerClickTextDraw(playerid, Text:clickedid)
 					Result = db_query(Database, DB_Query);
 					if(db_num_rows(Result))
 					{
-						PInfo[playerid][ZSkin] = db_get_field_int(Result, 18);
+						PInfo[playerid][ZSkin] = db_get_field_int(Result, 19);
 					}
 					if(PInfo[playerid][ZSkin] != 0)	{
 				    	SetPlayerSkin(playerid, PInfo[playerid][ZSkin]); }
@@ -7596,7 +7679,7 @@ public OnPlayerClickTextDraw(playerid, Text:clickedid)
 					Result = db_query(Database, DB_Query);
 					if(db_num_rows(Result))
 					{
-						PInfo[playerid][ZSkin] = db_get_field_int(Result, 18);
+						PInfo[playerid][ZSkin] = db_get_field_int(Result, 19);
 					}
 					db_free_result(Result);
 
@@ -7892,14 +7975,14 @@ public OnPlayerUpdate(playerid)
 	{
 		g_EnterAnim{playerid} = true;
 	}
-	
+
 	if(aDuty{playerid} == true && PInfo[playerid][Level] > 0)
 	{
 	    new Float:hp;
 	    GetPlayerHealth(playerid, hp);
 	    if(hp < 100) SetPlayerHealth(playerid, 100);
 	}
-	
+
     new Keys, ud, lr;
     GetPlayerKeys(playerid, Keys, ud, lr);
     if(CheckCrouch[playerid] == 1)
@@ -7930,7 +8013,7 @@ public OnPlayerUpdate(playerid)
 		    RemovePlayerAttachedObject(playerid, 5);
 		}
 	}
-	
+
 	if(GetPlayerAnimationIndex(playerid))
     {
         new animlib[32];
@@ -10755,7 +10838,7 @@ function Random3Checkpoints()
 
 function EndRound(win)
 {
- 	new number,there,idk,idd,idi,maxk,maxd,maxi,string[160];
+ 	new number,there,idk = soap_id,idd = soap_id,idi = soap_id,maxk,maxd,maxi,string[160];
 	for(new i; i < MAX_PLAYERS;i++)
 	{
 	    if(!IsPlayerConnected(i)) continue;
@@ -10839,7 +10922,10 @@ function EndRoundFinal()
 		if(PInfo[i][P_STATUS] != PS_SPAWNED) continue;
 		GameTextForPlayer(i,"~y~Please wait, you are being ~n~~g~~h~reconnected!",6000,3);
 	}
-	SendRconCommand("gmx");
+	//Change Gm
+	// We change it!!!
+	SetTimer("change_gm", 1000, 0); // Just comment it
+	//SendRconCommand("gmx"); // just comment it
 	return 1;
 }
 
@@ -10909,7 +10995,7 @@ public OnPlayerPickUpDynamicPickup(playerid, pickupid)
         }
     }
 
-    /*if(pickupid == Pumpkin)
+    /*if(pickupid == TikiStatue)
 	{
 	    if(GotXPFromPump[playerid] == false)
 	    {
@@ -10932,21 +11018,21 @@ public OnPlayerPickUpDynamicPickup(playerid, pickupid)
 		    PlaySound(playerid, 1083);
 
 			Winner = 1;
-			PumpkinOn = 0;
+			TikiStatueOn = 0;
 			KillTimer(timer_pump);
-			SendFMessageToAll(COLOR_MAUVE, "» Pumpkin was found by %s. His wish him congratulations!", GetPName(playerid));
+			SendFMessageToAll(COLOR_MAUVE, "» TikiStatue was found by %s. His wish him congratulations!", GetPName(playerid));
 			gettime(Hour, Minute, Second);
-			SendFMessageToAll(COLOR_MAUVE, "» A new pumpkin will be hidden in %d minutes.", Minutes-Minute+10);
+			SendFMessageToAll(COLOR_MAUVE, "» A new TikiStatue will be hidden in %d minutes.", Minutes-Minute+10);
 			SendFMessage(playerid, white, "» {2C8522}You won the sum of %d XP !", randxp);
 
-		    DestroyDynamicPickup(Pumpkin);
+		    DestroyDynamicPickup(TikiStatue);
 		}
 	    return 1;
 	}*/
 	return 1;
 }
 
-function PumpkinFix()
+function TikiStatueFix()
 {
 	foreach(new i:Player)
 	{
@@ -10972,13 +11058,13 @@ function PumpkinFix()
 		    PlaySound(i, 1083);
 
 			Winner = 1;
-			PumpkinOn = 0;
-			SendFMessageToAll(COLOR_MAUVE, "» Pumpkin was found by %s. His wish him congratulations!", GetPName(i));
+			TikiStatueOn = 0;
+			SendFMessageToAll(COLOR_MAUVE, "» Tiki Statue was found by %s. His wish him congratulations!", GetPName(i));
 			gettime(Hour, Minute, Second);
-			SendFMessageToAll(COLOR_MAUVE, "» A new pumpkin will be hidden in %d minutes.", Minutes-Minute+10);
+			SendFMessageToAll(COLOR_MAUVE, "» A new Tiki Statue will be hidden in %d minutes.", Minutes-Minute+10);
 			SendFMessage(i, white, "» {2C8522}You won the sum of %d XP !", randxp);
 
-		    DestroyDynamicPickup(Pumpkin);
+		    DestroyDynamicPickup(TikiStatue);
 		    KillTimer(timer_pump);
 		    return 1;
 		}
@@ -11562,7 +11648,7 @@ function ServerSettings()
 
 	if(ServerN == 0)
 	{
-		SendRconCommand("hostname Zombie Apocalyptic Outbreak 2.0 - [LagShot]");
+		SendRconCommand("hostname Zombie Apocalyptic Outbreak 2.1 - [LagShot]");
         SetTimer("ServerSettings", 2500,0);
 		ServerN = 1;
 	}
@@ -12070,34 +12156,34 @@ function AirDropTimer()
 	return 1;
 }
 
-function HalloweenEvent()
+function TikiEvent()
 {
 	new
 		string[256],
 		rand = random(sizeof(RandomPositions));
 
 	if(Winner == 0) {
-		DestroyDynamicPickup(Pumpkin);
-		SendClientMessageToAll(-1, "Nobody has found the pumpkin.");
+		DestroyDynamicPickup(TikiStatue);
+		SendClientMessageToAll(-1, "Nobody has found the tiki.");
 	}
 
 	Winner = 0;
 	Number = rand;
-	
-	Pumpkin = CreateDynamicPickup(19320, 23, RandomPositions[rand][0], RandomPositions[rand][1], RandomPositions[rand][2]);
+
+	TikiStatue = CreateDynamicPickup(19320, 23, RandomPositions[rand][0], RandomPositions[rand][1], RandomPositions[rand][2]);
 
 	PX = RandomPositions[rand][0], PY = RandomPositions[rand][1], PZ = RandomPositions[rand][2];
 
-    timer_pump = SetTimer("PumpkinFix", 800, true);
+    timer_pump = SetTimer("TikiStatueFix", 800, true);
 
-	SendClientMessageToAll(COLOR_DARKMAUVE, "[ » ] Halloween Event [ « ]");
-	format(string, sizeof(string), "» A new pumpkin was hidding in the area: %s.", LocationsName[rand]);
+	SendClientMessageToAll(COLOR_DARKMAUVE, "[ » ] Tiki Statue Event [ « ]");
+	format(string, sizeof(string), "» A new tiki was hidding in the area: %s.", LocationsName[rand]);
 	SendClientMessageToAll(COLOR_MAUVE, string);
-	SendClientMessageToAll(COLOR_MAUVE, "» You have 10 minutes to find this pumpkin.");
+	SendClientMessageToAll(COLOR_MAUVE, "» You have 10 minutes to find this Tiki.");
 
-    PumpkinOn = 1;
+    TikiStatueOn = 1;
 	foreach(new i:Player) GotXPFromPump[i] = false;
-	
+
 	new Hour, Minute, Second;
 	gettime(Hour, Minute, Second);
 	Minutes = Minute;
@@ -12692,6 +12778,17 @@ function HoldWps()
 	}
 	return 1;
 }
+
+
+forward change_gm();
+public change_gm()
+{
+    new mapname[] = MAP_NAME;
+	new str[64];
+	format(str, sizeof(str), "changemode %s", mapname);
+	SendRconCommand(str);
+}
+
 
 function ZHideAgain(playerid) CanHide{playerid} = true;
 function KickPlayer(playerid) Kick(playerid);
