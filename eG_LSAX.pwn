@@ -3719,9 +3719,9 @@ CMD:airdrop(playerid, params[])
 	SendClientMessageToAll(white, "» LOCUTOR: {5CA488}Find that bag to get items.");
 
 	new rand = random(3);
-	if(rand == 0) AirDTimer = SetTimer("AirDropTimer", 900000, true);
-	else if(rand == 1) AirDTimer = SetTimer("AirDropTimer", 600000, true);
-	else if(rand == 2) AirDTimer = SetTimer("AirDropTimer", 720000, true);
+	if(rand == 0) AirDTimer = SetTimer("AirDropTimer", 900000, false);
+	else if(rand == 1) AirDTimer = SetTimer("AirDropTimer", 600000, false);
+	else if(rand == 2) AirDTimer = SetTimer("AirDropTimer", 720000, false);
 	return 1;
 }
 
@@ -12150,9 +12150,9 @@ function AirDropTimer()
 	SendClientMessageToAll(white, "» LOCUTOR: {5CA488}Find that bag to get items.");
 
 	new rand = random(3);
-	if(rand == 0) AirDTimer = SetTimer("AirDropTimer", 900000, true);
-	else if(rand == 1) AirDTimer = SetTimer("AirDropTimer", 600000, true);
-	else if(rand == 2) AirDTimer = SetTimer("AirDropTimer", 720000, true);
+	if(rand == 0) AirDTimer = SetTimer("AirDropTimer", 900000, false);
+	else if(rand == 1) AirDTimer = SetTimer("AirDropTimer", 600000, false);
+	else if(rand == 2) AirDTimer = SetTimer("AirDropTimer", 720000, false);
 	return 1;
 }
 
