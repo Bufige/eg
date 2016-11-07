@@ -5357,10 +5357,10 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 		{
 		    for(new p; p<sizeof pZPos; p++)
 			{
-			    if(IsPlayerInRangeOfPoint(playerid, 3.0, pZPos[p][0],pZPos[p][1],pZPos[p][2]))
+			    if(IsPlayerInRangeOfPoint(playerid, 2.0, pZPos[p][0],pZPos[p][1],pZPos[p][2]))
 				{
 					ShowPlayerDialog(playerid, DIALOG_HIVETP, DIALOG_STYLE_LIST, "Hive TP",
-						""cwhite"Grove Street\n"cwhite"Unity\n"cwhite"Los Santos Police Department\n"cwhite"Hospital\n"cwhite"Glen Park\n"cwhite"Market\n"cwhite"Vinewood\n"cwhite"Playa Costera\n"cwhite"Mulholland\n"cwhite"Beach\n"cwhite"Hive", "[ V ]", "[ X ]");
+						""cwhite"Grove Street\n"cwhite"Unity\n"cwhite"Los Santos Police Department\n"cwhite"Hospital\n"cwhite"Glen Park\n"cwhite"Market Station\n"cwhite"Vinewood\n"cwhite"Playa Costera\n"cwhite"Mulholland\n"cwhite"Beach\n"cwhite"Mansion\n"cwhite"Super Market"cwhite"Hive", "[ V ]", "[ X ]");
 				}
 			}
 		}
@@ -6885,7 +6885,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
             {
 				SetPlayerPos(playerid, 831.413146, -1390.246582, -0.553125);
 				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Market
+				SetPlayerTime(playerid, 6, 0); // Market Station
 			}
             case 6:
             {
@@ -6907,11 +6907,23 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 			}
             case 9:
             {
+				SetPlayerPos(playerid, 237.843780, -1387.799804, 53.594272);
+				SetPlayerWeather(playerid, 9);
+				SetPlayerTime(playerid, 6, 0); // Mansion
+			}
+			case 10:
+            {
+				SetPlayerPos(playerid, 975.114929, -1525.581298, 13.559997);
+				SetPlayerWeather(playerid, 9);
+				SetPlayerTime(playerid, 6, 0); // Super Market
+			}
+			case 11:
+            {
 				SetPlayerPos(playerid, 358.485534, -1755.051025, 5.524650);
 				SetPlayerWeather(playerid, 9);
 				SetPlayerTime(playerid, 6, 0); // Beach
 			}
-            case 10:
+            case 12:
             {
                 new rand = random(sizeof(RandomSpawnsZombie));
 				SetPlayerPos(playerid, RandomSpawnsZombie[rand][0], RandomSpawnsZombie[rand][1], RandomSpawnsZombie[rand][2]); // Hive
