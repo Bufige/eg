@@ -4756,7 +4756,7 @@ CMD:kick(playerid,params[])
 	if(!IsPlayerConnected(id)) return SendClientMessage(playerid,red,"That player is not connected!");
 	if(IsPlayerNPC(id)) return SendClientMessage(playerid,red,"You can't kick to the Sgt Soap!");
 
-	new string[100];
+	new string[256];
 	format(string,sizeof string,"|| Administrator %s(%i) has kicked to %s [Reason: %s] ||",GetPName(playerid),playerid,GetPName(id),reason);
 	SendClientMessageToAll(red,string);
 
