@@ -156,8 +156,6 @@ new dropitem,
 	airdropitem,
 	PingTimer[MAX_PLAYERS];
 
-new Extra3CPs;
-
 new JailTimer[MAX_PLAYERS];
 new Jailed[MAX_PLAYERS];
 
@@ -312,20 +310,6 @@ new Float:Searchplaces[31][3] =
     {289.829803, -85.760406, 1001.515625},
     {290.345672, -57.436023, 1001.515625},
     {288.216430, -67.210319, 1001.515625}
-};
-
-new Float:RandomVS[4][4] =
-{
-    {2257.878906, -71.085357, 31.601562, 268.837890},
-    {2305.682861, 83.276649, 26.478700, 6.805414},
-    {2319.548828, -52.346298, 26.484375, 183.733306},
-    {2237.710937, 161.664291, 27.257291, 177.154541}
-};
-
-new Float:RandomVZ[2][4] =
-{
-    {2240.148681, -83.622108, 26.500644, 1.103935},
-    {2275.655029, 63.365276, 26.484375, 272.499755}
 };
 
 new Float:Randomspawns[9][4] =
@@ -764,9 +748,9 @@ new ServerN;
 new
     PMeat[13],
 	ZTPS[5],
-	TPZone[10];
+	TPZone[12];
 
-new Float:pZPos[15][3] = {
+new Float:pZPos[17][3] = {
 	{2606.136230, -1463.581054, 19.009654},
 	{1694.141113, -1971.765380, 8.824961},
 	{1547.274780, -1636.830566, 6.218750},
@@ -781,7 +765,9 @@ new Float:pZPos[15][3] = {
 	{27.856601, 1571.499267, 12.800000},
 	{6.460189, 1574.291381, 12.800000},
 	{-31.724969, 1502.337280, 12.800000},
-	{34.202831, 1486.785034, 12.800000}
+	{34.202831, 1486.785034, 12.800000},
+	{237.843780, -1387.799804, 53.594272},
+	{975.114929, -1525.581298, 13.559997}
 };
 
 new Float:RandomSpawnsZombie[4][3] = {
@@ -1038,7 +1024,6 @@ public OnGameModeInit()
 	CPscleared = 0;
 	RoundEnded = 0;
 	TikiStatueOn = 0;
-	Extra3CPs = 0;
 	foreach(new i:Player) PInfo[i][Lighton] = false;
 
 	if(fexist("Admin/Teams.txt"))
@@ -1899,183 +1884,6 @@ public OnPlayerSpawn(playerid)
 		CheckRankup(playerid);
 	    PInfo[playerid][Firstspawn] = 0;
 	    PingTimer[playerid] = SetTimerEx("CheckPing", 10000, 1, "i", playerid);
-	}
-
-  	if(Extra3CPs == 1)
-    {
-        if(Team[playerid] == HUMAN)
-		{
-			if(IsSpecing[playerid] == 1)
-			{
-				SetPlayerPos(playerid,SpecX[playerid],SpecY[playerid],SpecZ[playerid]);
-				SetPlayerInterior(playerid,Inter[playerid]);
-				SetPlayerVirtualWorld(playerid,vWorld[playerid]);
-				IsSpecing[playerid] = 0;
-				IsBeingSpeced[spectatorid[playerid]] = 0;
-				CheckRankup(playerid);
-				for(new w=0; w < 13; w++) GivePlayerWeapon(playerid, specweps[playerid][w][0], specweps[playerid][w][1]);
-
-				if(PInfo[playerid][SSkin] != 0 && PInfo[playerid][Premium] > 0)	{
-				    SetPlayerSkin(playerid, PInfo[playerid][SSkin]); }
-				else {
-					SetPlayerSkin(playerid, HumansSkins[ PInfo[playerid][P_INTRO_SKIN_SELECTED][1] ]); }
-				return 1;
-			}
-
-		    if(PInfo[playerid][SPerk] == 19) GivePlayerWeapon(playerid,16,3);
-		    ResetPlayerInventory(playerid);
-			new rand = random(sizeof RandomVS);
-			SetPlayerPos(playerid,RandomVS[rand][0], RandomVS[rand][1], RandomVS[rand][2]);
-			SetPlayerFacingAngle(playerid,RandomVS[rand][3]);
-			SetCameraBehindPlayer(playerid);
-			CheckRankup(playerid,1);
-			SetPlayerColor(playerid,green);
-
-			SetPlayerWeather(playerid, 9);
-			SetPlayerTime(playerid, 0, 0);
-
-			if(PInfo[playerid][Premium] == 0)
-	  		{
-				AddItem(playerid,"Small Medical Kits",5);
-			    AddItem(playerid,"Medium Medical Kits",4);
-		        AddItem(playerid,"Large Medical Kits",3);
-		        AddItem(playerid,"Fuel",3);
-		        AddItem(playerid,"Oil",3);
-		        AddItem(playerid,"Flashlight",3);
-		    }
-		    if(PInfo[playerid][Premium] == 1)
-		    {
-		        SetPlayerArmour(playerid,100);
-			    AddItem(playerid,"Small Medical Kits",15);
-		     	AddItem(playerid,"Medium Medical Kits",15);
-			    AddItem(playerid,"Large Medical Kits",15);
-			    AddItem(playerid,"Fuel",15);
-			    AddItem(playerid,"Oil",15);
-			    AddItem(playerid,"Flashlight",15);
-			    AddItem(playerid,"Dizzy Pills",15);
-				/*new file[80];
-				format(file,sizeof file,Userfile,GetPName(playerid));
-				INI_Open(file);
-				SetPlayerSkin(playerid,INI_ReadInt("SSkin"));
-				INI_Close();*/
-				new DBResult:Result;
-				format(DB_Query, sizeof(DB_Query), "SELECT * FROM USERS WHERE NAME = '%s'", GetPName(playerid));
-				Result = db_query(Database, DB_Query);
-				if(db_num_rows(Result))
-				{
-					PInfo[playerid][SSkin] = db_get_field_int(Result, 18);
-				}
-				db_free_result(Result);
-				if(PInfo[playerid][SSkin] != 0)	{
-				    SetPlayerSkin(playerid, PInfo[playerid][SSkin]); }
-				else {
-					SetPlayerSkin(playerid, HumansSkins[ PInfo[playerid][P_INTRO_SKIN_SELECTED][1] ]); }
-		    }
-		    if(PInfo[playerid][Premium] == 2)
-		    {
-		        SetPlayerArmour(playerid,150);
-			    AddItem(playerid,"Small Medical Kits",24);
-		     	AddItem(playerid,"Medium Medical Kits",24);
-			    AddItem(playerid,"Large Medical Kits",24);
-			    AddItem(playerid,"Fuel",24);
-			    AddItem(playerid,"Oil",24);
-			    AddItem(playerid,"Flashlight",24);
-			    AddItem(playerid,"Dizzy Pills",24);
-			    AddItem(playerid,"Molotovs Guide",1);
-			    AddItem(playerid,"Bouncing Bettys Guide",1);
-			    /*new file[80];
-				format(file,sizeof file,Userfile,GetPName(playerid));
-				INI_Open(file);
-				SetPlayerSkin(playerid,INI_ReadInt("SSkin"));
-				INI_Close();*/
-				new DBResult:Result;
-				format(DB_Query, sizeof(DB_Query), "SELECT * FROM USERS WHERE NAME = '%s'", GetPName(playerid));
-				Result = db_query(Database, DB_Query);
-				if(db_num_rows(Result))
-				{
-					PInfo[playerid][SSkin] = db_get_field_int(Result, 18);
-				}
-				db_free_result(Result);
-
-				if(PInfo[playerid][SSkin] != 0)	{
-				    SetPlayerSkin(playerid, PInfo[playerid][SSkin]); }
-				else {
-					SetPlayerSkin(playerid, HumansSkins[ PInfo[playerid][P_INTRO_SKIN_SELECTED][1] ]); }
-
-				//rand = random(sizeof Platspawns);
-				//SetPlayerPos(playerid,Platspawns[rand][0],Platspawns[rand][1],Platspawns[rand][2]);
-				//SetPlayerFacingAngle(playerid,Platspawns[rand][3]);
-		    }
-			//PutGlassesOn(playerid);
-			//PutHatOn(playerid);
-		}
-	    if(Team[playerid] == ZOMBIE)
-	    {
-	   		if(IsSpecing[playerid] == 1)
-			{
-				SetPlayerPos(playerid,SpecX[playerid],SpecY[playerid],SpecZ[playerid]);
-				SetPlayerInterior(playerid,Inter[playerid]);
-				SetPlayerVirtualWorld(playerid,vWorld[playerid]);
-				IsSpecing[playerid] = 0;
-				IsBeingSpeced[spectatorid[playerid]] = 0;
-
-				if(PInfo[playerid][ZSkin] != 0 && PInfo[playerid][Premium] > 0)	{
-				    SetPlayerSkin(playerid, PInfo[playerid][ZSkin]); }
-				else {
-					SetPlayerSkin(playerid, ZombieSkins[ PInfo[playerid][P_INTRO_SKIN_SELECTED][0] ]); }
-
-				return 1;
-			}
-			if(PInfo[playerid][JustInfected] == 1)
-		    {
-		        //print("Infect 1");
-		        SetSpawnInfo(playerid, 0, ZombieSkins[random(sizeof(ZombieSkins))], ZPS[playerid][0], ZPS[playerid][1], ZPS[playerid][2], ZPS[playerid][3], 0, 0, 0, 0, 0, 0);
-		        if(PInfo[playerid][Premium] == 1 || PInfo[playerid][Premium] == 2) {
-			        if(PInfo[playerid][ZSkin] != 0)	{
-				    	SetPlayerSkin(playerid, PInfo[playerid][ZSkin]); }
-					else {
-						SetPlayerSkin(playerid, ZombieSkins[random(sizeof(ZombieSkins))]);  }
-				}
-		        SetPlayerSkin(playerid, ZombieSkins[random(sizeof(ZombieSkins))]);
-		        PInfo[playerid][JustInfected] = 0;
-	    	    SetPlayerColor(playerid,purple);
-			    SetPlayerArmour(playerid,0);
-			    SetPlayerHealth(playerid,150.0);
-		        //InfectPlayer(playerid);
-		        return 1;
-			}
-
-			SetPlayerWeather(playerid, 9);
-			SetPlayerTime(playerid, 6, 0);
-			Team[playerid] = ZOMBIE;
-
-		    //TimerBait[playerid] = SetTimerEx("BaitEffect", 700, true, "i", playerid);
-
-		    if(PInfo[playerid][Premium] == 1 || PInfo[playerid][Premium] == 2)
-		    {
-				new DBResult:Result;
-				format(DB_Query, sizeof(DB_Query), "SELECT * FROM USERS WHERE NAME = '%s'", GetPName(playerid));
-				Result = db_query(Database, DB_Query);
-				if(db_num_rows(Result))
-				{
-					PInfo[playerid][ZSkin] = db_get_field_int(Result, 18);
-				}
-				if(PInfo[playerid][ZSkin] != 0)	{
-			    	SetPlayerSkin(playerid, PInfo[playerid][ZSkin]); }
-				else {
-					SetPlayerSkin(playerid, ZombieSkins[ PInfo[playerid][P_INTRO_SKIN_SELECTED][0] ]); }
-
-				db_free_result(Result);
-		    }
-		    SetPlayerColor(playerid,purple);
-		    SetPlayerArmour(playerid,0);
-		    SetPlayerHealth(playerid,150.0);
-		    SetPlayerSkin(playerid, ZombieSkins[ PInfo[playerid][P_INTRO_SKIN_SELECTED][0] ]);
-   			new rand = random(sizeof RandomVZ);
-			SetPlayerPos(playerid,RandomVZ[rand][0], RandomVZ[rand][1], RandomVZ[rand][2]);
-			SetPlayerFacingAngle(playerid,RandomVZ[rand][3]);
-	    }
-        return 1;
 	}
 
   	for(new p; p<sizeof pZPos; p++)
@@ -3073,6 +2881,28 @@ public OnPlayerConnect(playerid)
 
 	PlayAudioStreamForPlayer(playerid, ZombieMusic[ random(sizeof ZombieMusic) ] );
     SendClientMessage(playerid, white, "» "cgold"Loading server data ...");
+    
+    RemoveBuildingForPlayer(playerid, 6049, 1009.3359, -1891.7891, 11.9297, 0.25);
+	RemoveBuildingForPlayer(playerid, 1231, 1013.1719, -1933.0859, 13.9453, 0.25);
+	RemoveBuildingForPlayer(playerid, 1231, 1012.1250, -1911.7031, 14.5703, 0.25);
+	RemoveBuildingForPlayer(playerid, 792, 1012.2813, -1916.4531, 11.7266, 0.25);
+	RemoveBuildingForPlayer(playerid, 1280, 1011.3594, -1907.7656, 11.7891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1280, 1010.9297, -1895.3672, 11.7891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1280, 1011.1875, -1901.7344, 11.7891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1231, 1011.0703, -1890.3203, 14.0938, 0.25);
+	RemoveBuildingForPlayer(playerid, 792, 1011.1016, -1880.8594, 11.7969, 0.25);
+	RemoveBuildingForPlayer(playerid, 1280, 1010.5703, -1884.9141, 11.7891, 0.25);
+	RemoveBuildingForPlayer(playerid, 6050, 1019.7656, -1921.6250, 13.5938, 0.25);
+	RemoveBuildingForPlayer(playerid, 3340, 2549.2188, -955.9063, 81.2891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1407, 2541.3828, -962.5391, 81.6953, 0.25);
+	RemoveBuildingForPlayer(playerid, 1410, 2543.8984, -964.5078, 81.8281, 0.25);
+	RemoveBuildingForPlayer(playerid, 1407, 2548.4922, -963.7813, 82.0625, 0.25);
+	RemoveBuildingForPlayer(playerid, 3167, 2549.2188, -955.9063, 81.2891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1410, 2540.8516, -957.9141, 81.8516, 0.25);
+	RemoveBuildingForPlayer(playerid, 1410, 2557.4766, -951.4141, 82.4453, 0.25);
+	RemoveBuildingForPlayer(playerid, 1407, 2558.2422, -956.0000, 82.5078, 0.25);
+	RemoveBuildingForPlayer(playerid, 13054, -61.4531, -36.9922, 1.9766, 0.25);
+	RemoveBuildingForPlayer(playerid, 12911, -61.4531, -36.9922, 1.9766, 0.25);
 	return 1;
 }
 
@@ -5474,7 +5304,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
             }
         }
     }
-    if(PRESSED(KEY_FIRE | KEY_CROUCH) )
+    if(PRESSED(KEY_WALK | KEY_CROUCH) )
 	//if((newkeys & KEY_WALK) && (newkeys & KEY_CROUCH))
 	{
 	    if(PInfo[playerid][SPerk] == 9)
@@ -8930,7 +8760,7 @@ stock CheckRankup(playerid,gw=0)
 
 function RandomCheckpoint()
 {
-	new rand = random(16);
+	new rand = random(18);
 	CPID = rand;
 	if(RoundEnded == 1) return 0;
 	if(rand == 0)
@@ -9157,6 +8987,34 @@ function RandomCheckpoint()
 		    SendClientMessage(i,white,"** "cred"No battery left...");
 		}
 	}
+	if(rand == 16)
+	{
+		for(new i; i < MAX_PLAYERS;i++)
+		{
+			if(!IsPlayerConnected(i)) continue;
+			if(PInfo[i][P_STATUS] != PS_SPAWNED) continue;
+		    SetPlayerCheckpoint(i,1016.805664, -1894.302978, 12.768750,20.0);
+		    SendClientMessage(i,white,"** "cred"Radio interferance...");
+		    SendClientMessage(i,white,"» Announcer: "cblue"This is the Emergency Broadcast system THIS IS NOT A TEST!!");
+		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Verona Beach!");
+		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
+		    SendClientMessage(i,white,"** "cred"No battery left...");
+		}
+	}
+	if(rand == 17)
+	{
+		for(new i; i < MAX_PLAYERS;i++)
+		{
+			if(!IsPlayerConnected(i)) continue;
+			if(PInfo[i][P_STATUS] != PS_SPAWNED) continue;
+		    SetPlayerCheckpoint(i,2546.757080, -959.722229, 82.336738,20.0);
+		    SendClientMessage(i,white,"** "cred"Radio interferance...");
+		    SendClientMessage(i,white,"» Announcer: "cblue"This is the Emergency Broadcast system THIS IS NOT A TEST!!");
+		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to The Hills!");
+		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
+		    SendClientMessage(i,white,"** "cred"No battery left...");
+		}
+	}
 	SetTimer("CheckCP",1000,false);
 	return 1;
 }
@@ -9182,6 +9040,8 @@ function change_name()
 	else if(CPID == 13) cp_name = "~w~~h~Police Department";
 	else if(CPID == 14) cp_name = "~w~~h~Super-Market";
 	else if(CPID == 15) cp_name = "~w~~h~Mansion";
+	else if(CPID == 16) cp_name = "~w~~h~Verona Beach";
+	else if(CPID == 17) cp_name = "~w~~h~The Hills";
 
  	format(st,sizeof(st),"~w~CP: %s", cp_name);
 	TextDrawSetString(CP_Name, st);
@@ -9212,6 +9072,8 @@ function CheckCP()
 	else if(CPID == 13) cp_name = "~w~~h~Police Department";
 	else if(CPID == 14) cp_name = "~w~~h~Super-Market";
 	else if(CPID == 15) cp_name = "~w~~h~Mansion";
+	else if(CPID == 16) cp_name = "~w~~h~Verona Beach";
+	else if(CPID == 17) cp_name = "~w~~h~The Hills";
 
 	format(st,sizeof(st),"~w~CP: %s", cp_name);
 	TextDrawSetString(CP_Name, st);
@@ -9384,10 +9246,8 @@ function CheckCP()
 	       		}
 	       		DisablePlayerCheckpoint(i);
 	   		}
-	   		if(Extra3CPs == 0)
-		   		SetTimer("RandomCheckpoint",CPTIME,false);
-			else
-			    SetTimer("Random3Checkpoints",CPTIME,false);
+	   		SetTimer("RandomCheckpoint",CPTIME,false);
+	   		
 	   		CPID = -1;
 	   		CPValue = 0;
 	   		SetTimer("change_name",1000,false);
@@ -9463,6 +9323,14 @@ stock SetPlayerCP(playerid)
 	else if(CPID == 15)
 	{
  		SetPlayerCheckpoint(playerid,295.127410, -1164.233398, 80.909896,20.0);
+	}
+	else if(CPID == 16)
+	{
+ 		SetPlayerCheckpoint(playerid,1016.805664, -1894.302978, 12.768750,20.0);
+	}
+	else if(CPID == 17)
+	{
+ 		SetPlayerCheckpoint(playerid,2546.757080, -959.722229, 82.336738,20.0);
 	}
 	return 1;
 }
@@ -10667,22 +10535,6 @@ function FiveSeconds()
 		{
 		    if(RoundEnded == 0)
 		    {
-          		/*if(Extra3CPs == 1)
-	        	{
-	        	    SetTimerEx("EndRound",3000,false,"i",1);
-				    GameTextForAll("~w~The round has ended.",3000,3);
-				    RoundEnded = 1;
-				    return 1;
-	        	}
-		        Extra3CPs = 1;
-		        CPscleared = 0;
-		        CPID = 0, CP_Activated = 0;
-		        KillTimer(HTimer);
-		        KillTimer(AirDTimer);
-		        foreach(new i:Player) DisablePlayerCheckpoint(i);
-		        KillTimer(RandomCPTimer);
-				SetTimer("Extra3CPS", 3000, false);
-				GameTextForAll("~y~Max ~r~infection ~y~level reached.",3000,3);*/
 				new string[200];
     			format(string,sizeof(string),"04The round has ended.");
                 IRC_GroupSay(gGroupID, IRC_CHANNEL, string);
@@ -10707,22 +10559,6 @@ function FiveSeconds()
 	{
 	    if(RoundEnded == 0)
 	    {
-	        /*if(Extra3CPs == 1)
-        	{
-        	    SetTimerEx("EndRound",3000,false,"i",2);
-			    GameTextForAll("~w~The round has ended.",3000,3);
-			    RoundEnded = 1;
-			    return 1;
-        	}
-	        Extra3CPs = 1;
-	        CPscleared = 0;
-	        CPID = 0, CP_Activated = 0;
-	        KillTimer(HTimer);
-	        KillTimer(AirDTimer);
-	        foreach(new i:Player) DisablePlayerCheckpoint(i);
-	        KillTimer(RandomCPTimer);
-	    	SetTimer("Extra3CPS", 3000, false);
-			GameTextForAll("~y~6 CPs Cleared Sucessfully.",3000,3);*/
 			new string[200];
 			format(string,sizeof(string),"04The round has ended.");
             IRC_GroupSay(gGroupID, IRC_CHANNEL, string);
@@ -10741,110 +10577,6 @@ function FiveSeconds()
 	        KillTimer(RandomCPTimer);
 		}
 	}
-	return 1;
-}
-
-function Extra3CPS()
-{
-	if(Extra3CPs == 1)
-	{
-	    foreach(new i:Player)
-	    {
-	        new infects, string2[45];
-	        if(IsPlayerNPC(i)) continue;
-		    if(!IsPlayerConnected(i)) continue;
-			if(PInfo[i][P_STATUS] != PS_SPAWNED) continue;
-		    if(PInfo[i][Firstspawn] == 1) continue;
-		    if(PlayerState[i] == false) continue;
-		    if(Team[i] == ZOMBIE) infects++;
-
-			if(floatround(100.0 * floatdiv(infects, PlayersConnected)) >= 100)
-			{
-			    Team[i] = HUMAN;
-			    SetPlayerColor(i, green);
-			    new rand = random(162);
-			    new rand2 = random(sizeof(RandomVS));
-			    SetSpawnInfo(i, 0, HumansSkins[ rand ], RandomVS[rand2][0], RandomVS[rand2][1], RandomVS[rand2][2], RandomVS[rand2][3], 0, 0, 0, 0, 0, 0);
-			    GameTextForAll("~r~3 ~w~EXTRA CPS !",5000,3);
-			    MAX_CP_CLEARED = 3;
-
-				SpawnPlayer(i);
-				SetTimer("Random3Checkpoints", CPTIME, false);
-
-		   		format(string2,sizeof string2,"~w~Checkpoints_cleared____~r~%i~w~/%i", CPscleared, MAX_CP_CLEARED);
-		   		TextDrawSetString(CPSCleared,string2);
-		   		TextDrawShowForAll(CPSCleared);
-			}
-			else
-			{
-				Team[i] = HUMAN;
-				SetPlayerColor(i, green);
-    			new rand = random(162);
-			    new rand2 = random(sizeof(RandomVS));
-			    SetSpawnInfo(i, 0, HumansSkins[ rand ], RandomVS[rand2][0], RandomVS[rand2][1], RandomVS[rand2][2], RandomVS[rand2][3], 0, 0, 0, 0, 0, 0);
-		        GameTextForAll("~r~3 ~w~EXTRA CPS !",5000,3);
-		        MAX_CP_CLEARED = 3;
-
-				SpawnPlayer(i);
-				SetTimer("Random3Checkpoints", CPTIME, false);
-
-		   		format(string2,sizeof string2,"~w~Checkpoints_cleared____~r~%i~w~/%i", CPscleared, MAX_CP_CLEARED);
-		   		TextDrawSetString(CPSCleared,string2);
-		   		TextDrawShowForAll(CPSCleared);
-			}
-	    }
-	}
-	return 1;
-}
-
-function Random3Checkpoints()
-{
-	new rand = random(3);
-	CPID = rand;
-	if(RoundEnded == 1) return 0;
-	if(rand == 0)
-	{
-		for(new i; i < MAX_PLAYERS;i++)
-		{
-			if(!IsPlayerConnected(i)) continue;
-			if(PInfo[i][P_STATUS] != PS_SPAWNED) continue;
-			SetPlayerCheckpoint(i, 2319.171386, 27.906017, 26.484375, 20.0);
-		    SendClientMessage(i,white,"** "cred"Radio interferance...");
-		    SendClientMessage(i,white,"» Announcer: "cblue"This is the Emergency Broadcast system THIS IS NOT A TEST!!");
-		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Palomino Creek Center");
-		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
-		    SendClientMessage(i,white,"** "cred"No battery left...");
-		}
-	}
-	if(rand == 1)
-	{
-		for(new i; i < MAX_PLAYERS;i++)
-		{
-			if(!IsPlayerConnected(i)) continue;
-			if(PInfo[i][P_STATUS] != PS_SPAWNED) continue;
-			SetPlayerCheckpoint(i,1558.099975, 20.362739, 24.164062,20.0);
-		    SendClientMessage(i,white,"** "cred"Radio interferance...");
-		    SendClientMessage(i,white,"» Announcer: "cblue"This is the Emergency Broadcast system THIS IS NOT A TEST!!");
-		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Red Country!");
-		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
-		    SendClientMessage(i,white,"** "cred"No battery left...");
-		}
-	}
-	if(rand == 2)
-	{
-		for(new i; i < MAX_PLAYERS;i++)
-		{
-			if(!IsPlayerConnected(i)) continue;
-			if(PInfo[i][P_STATUS] != PS_SPAWNED) continue;
-			SetPlayerCheckpoint(i,1944.628417, 232.126190, 30.467897,20.0);
-		    SendClientMessage(i,white,"** "cred"Radio interferance...");
-		    SendClientMessage(i,white,"» Announcer: "cblue"This is the Emergency Broadcast system THIS IS NOT A TEST!!");
-		    SendClientMessage(i,white,"» Announcer: "cblue"If any survivors can hear me, head over to Red Country East!");
-		    SendClientMessage(i,white,"» Announcer: "cblue"To get Health, Ammo, XP, Safety");
-		    SendClientMessage(i,white,"** "cred"No battery left...");
-		}
-	}
-	SetTimer("CheckCP",1000,false);
 	return 1;
 }
 
@@ -10889,7 +10621,6 @@ function EndRound(win)
 	TextDrawHideForAll(StatsBox[1]);
 	TextDrawHideForAll(CP_Name);
 
-	Extra3CPs = 0;
 	number = 0;
 	format(string,sizeof string,"~g~~h~Most Kills: ~w~%s ~n~~g~~h~Most Deaths: ~w~%s ~n~~g~~h~Most Infects: ~w~%s",
 	    GetPName(idk),GetPName(idd),GetPName(idi));
@@ -11702,11 +11433,13 @@ ServerPickUps()
  	TPZone[2] = CreateDynamicPickup(1318, 1, 1547.274780, -1636.830566, 6.218750, -1); // LSPD
  	TPZone[3] = CreateDynamicPickup(1318, 1, 1294.354125, -1249.394653, 13.600000, -1); // Hospital
  	TPZone[4] = CreateDynamicPickup(1318, 1, 1908.839355, -1318.581298, 14.199999, -1); // Glen
- 	TPZone[5] = CreateDynamicPickup(1318, 1, 831.413146, -1390.246582, -0.553125, -1); // Market
+ 	TPZone[5] = CreateDynamicPickup(1318, 1, 831.413146, -1390.246582, -0.553125, -1); // Market Station
  	TPZone[6] = CreateDynamicPickup(1318, 1, 998.767272, -897.245483, 42.300121, -1); // Vinewood
  	TPZone[7] = CreateDynamicPickup(1318, 1, 2795.812744, -1176.926879, 28.915470, -1); // Playa Costera
  	TPZone[8] = CreateDynamicPickup(1318, 1, 1618.350830, -993.629333, 24.067668, -1); // Mulhegan
  	TPZone[9] = CreateDynamicPickup(1318, 1, 358.485534, -1755.051025, 5.524650, -1); // Beach
+ 	TPZone[10] = CreateDynamicPickup(1318, 1, 237.843780, -1387.799804, 53.594272, -1); // Mansion
+ 	TPZone[11] = CreateDynamicPickup(1318, 1, 975.114929, -1525.581298, 13.559997, -1); // Super Market
 
  	for(new p; p<sizeof pZPos; p++)
 	{
