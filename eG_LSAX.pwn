@@ -1766,6 +1766,7 @@ public OnPlayerRequestClass(playerid, classid)
 
 	if(PInfo[playerid][P_STATUS] == PS_CONNECTED)
 	{
+	    PlayAudioStreamForPlayer(playerid, ZombieMusic[ random(sizeof ZombieMusic) ] );
         TogglePlayerSpectating(playerid, true);
 		Streamer_UpdateEx(playerid, 1545.3540, -1612.0858, 13.2768);
 		//SetPlayerPos(playerid, 1545.3540, -1612.0858, 13.2768);
@@ -2656,23 +2657,6 @@ public OnPlayerDisconnect(playerid,reason)
 
 public OnPlayerConnect(playerid)
 {
-	new
-		joinMsg[128],
-		name[MAX_PLAYER_NAME];
-	GetPlayerName(playerid, name, sizeof(name));
-	format(joinMsg, sizeof(joinMsg), "02[%d] 03*** %s joined to the server.", playerid, name);
-	IRC_GroupSay(gGroupID, IRC_CHANNEL, joinMsg);
-
-	new connecting_ip[32+1];
-	GetPlayerIp(playerid,connecting_ip,32);
-	new num_players_on_ip = GetNumberOfPlayersOnThisIP(connecting_ip);
-
-	if(num_players_on_ip > MAX_CONNECTIONS_FROM_IP)
-	{
-		printf("MAXIPs: Connecting player(%d) exceeded %d IP connections from %s.", playerid, MAX_CONNECTIONS_FROM_IP, connecting_ip);
-	    Kick(playerid);
-	}
-
     if(IsPlayerNPC(playerid))
   	{
 	  	new npcname[MAX_PLAYER_NAME];
@@ -2697,6 +2681,22 @@ public OnPlayerConnect(playerid)
 		}
   		return 1;
   	}
+
+	new connecting_ip[32+1];
+	GetPlayerIp(playerid,connecting_ip,32);
+	new num_players_on_ip = GetNumberOfPlayersOnThisIP(connecting_ip);
+	if(num_players_on_ip > MAX_CONNECTIONS_FROM_IP)
+	{
+		printf("MAXIPs: Connecting player(%d) exceeded %d IP connections from %s.", playerid, MAX_CONNECTIONS_FROM_IP, connecting_ip);
+	    Kick(playerid);
+	}
+
+    new
+		joinMsg[128],
+		name[MAX_PLAYER_NAME];
+	GetPlayerName(playerid, name, sizeof(name));
+	format(joinMsg, sizeof(joinMsg), "02[%d] 03*** %s joined to the server.", playerid, name);
+	IRC_GroupSay(gGroupID, IRC_CHANNEL, joinMsg);
 
 	PlaySound(playerid,1077);
     PlayersConnected++;
@@ -2768,7 +2768,7 @@ public OnPlayerConnect(playerid)
 	format(label,sizeof label,""cgreen"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]);
  	PInfo[playerid][Ranklabel] = CreateDynamic3DTextLabel(label,0x85C051FF, 0.0, 0.0, 0.30, 5.0, playerid);*/
 
- 	new file[64];
+    new file[64];
  	format(file,sizeof file,""cgreen"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]);
  	PInfo[playerid][Ranklabel] = Create3DTextLabel(file, 0x008080AA, 0, 0, 0, 30.0, 0);
 	Attach3DTextLabelToPlayer(PInfo[playerid][Ranklabel], playerid, 0.0, 0.0, 0.3);
@@ -2866,10 +2866,6 @@ public OnPlayerConnect(playerid)
 	PlayerTextDrawSetProportional(playerid, PTD_INTRO_GUIDE[playerid], 1);
 	PlayerTextDrawSetShadow(playerid, PTD_INTRO_GUIDE[playerid], 0);
 
-/*	for(new i; i < MAX_PLAYERS;i++)
-	{
-	    SetPlayerMarkerForPlayer(i, playerid, 0x969696FF);
-	}*/
 	INI_Open("Admin/Teams.txt");
     if(INI_ReadInt(GetPName(playerid)) != 0)
     {
@@ -2879,7 +2875,6 @@ public OnPlayerConnect(playerid)
     }
     INI_Close();
 
-	PlayAudioStreamForPlayer(playerid, ZombieMusic[ random(sizeof ZombieMusic) ] );
     SendClientMessage(playerid, white, "» "cgold"Loading server data ...");
     
     RemoveBuildingForPlayer(playerid, 6049, 1009.3359, -1891.7891, 11.9297, 0.25);
@@ -3547,6 +3542,8 @@ CMD:airdrop(playerid, params[])
     SendClientMessageToAll(white, "** {009CBB}RADIO: AirDrop "cwhite"!");
 	SendClientMessageToAll(white, "» LOCUTOR: {5CA488}Sgt Nikolei has thrown a bag with subministers.");
 	SendClientMessageToAll(white, "» LOCUTOR: {5CA488}Find that bag to get items.");
+	
+    foreach(new i:Player) RemovePlayerMapIcon(i, 50);
 
 	new rand = random(3);
 	if(rand == 0) AirDTimer = SetTimer("AirDropTimer", 900000, false);
@@ -11894,6 +11891,8 @@ function AirDropTimer()
 	SendClientMessageToAll(white, "» LOCUTOR: {5CA488}Sgt Nikolei has thrown a bag with subministers.");
 	SendClientMessageToAll(white, "» LOCUTOR: {5CA488}Find that bag to get items.");
 
+    foreach(new i:Player) RemovePlayerMapIcon(i, 50);
+
 	new rand = random(3);
 	if(rand == 0) AirDTimer = SetTimer("AirDropTimer", 900000, false);
 	else if(rand == 1) AirDTimer = SetTimer("AirDropTimer", 600000, false);
@@ -11915,7 +11914,7 @@ function TikiEvent()
 	Winner = 0;
 	Number = rand;
 
-	TikiStatue = CreateDynamicPickup(19320, 23, RandomPositions[rand][0], RandomPositions[rand][1], RandomPositions[rand][2]);
+	TikiStatue = CreateDynamicPickup(1276, 23, RandomPositions[rand][0], RandomPositions[rand][1], RandomPositions[rand][2]);
 
 	PX = RandomPositions[rand][0], PY = RandomPositions[rand][1], PZ = RandomPositions[rand][2];
 
