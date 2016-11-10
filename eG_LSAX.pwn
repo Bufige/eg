@@ -5476,11 +5476,14 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
             }
         }
     }
-    if(PRESSED(KEY_FIRE | KEY_CROUCH) )
+    if(PRESSED(KEY_WALK | KEY_CROUCH) )
 	//if((newkeys & KEY_WALK) && (newkeys & KEY_CROUCH))
 	{
 	    if(PInfo[playerid][SPerk] == 9)
 	    {
+	        if(HasAnyWeapon(playerid) == 1)
+	            Team[playerid] = HUMAN;
+
 	        if(Team[playerid] == ZOMBIE) return 0;
 		    if(PInfo[playerid][ZombieBait] == 1) return SendClientMessage(playerid, white, "* "cred"You have to wait three minuts to use the zombie bait perk.");
 		    new string[70];
@@ -12803,6 +12806,20 @@ public change_gm()
 	new str[64];
 	format(str, sizeof(str), "changemode %s", mapname);
 	SendRconCommand(str);
+}
+
+stock HasAnyWeapon(playerid)
+{
+    new weapons[13][2];
+	for (new i = 1; i <= 12; i++)
+	{
+    	GetPlayerWeaponData(playerid, i, weapons[i][0], weapons[i][1]);
+		if(weapons[i][0] > 0 && weapons[i][1] > 0)
+		{
+			return 1;
+		}
+	}
+	return 0;
 }
 
 
