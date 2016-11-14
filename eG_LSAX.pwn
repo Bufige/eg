@@ -2850,8 +2850,12 @@ public OnPlayerConnect(playerid)
 		joinMsg[128],
 		name[MAX_PLAYER_NAME];
 	GetPlayerName(playerid, name, sizeof(name));
+	
 	format(joinMsg, sizeof(joinMsg), "02[%d] 03*** %s joined to the server.", playerid, name);
 	IRC_GroupSay(gGroupID, IRC_CHANNEL, joinMsg);
+
+	format(joinMsg, sizeof(joinMsg), "* [%d] %s joined to the server.", playerid, name);
+	SendAdminMessage(white, joinMsg);
 
 	new connecting_ip[32+1];
 	GetPlayerIp(playerid,connecting_ip,32);
