@@ -18,6 +18,7 @@
 #include <OPA>
 #include <irc>
 #include <strlib>
+#include <crashdetect>
 //============================= [Includes] =====================================
 #include "../include/gl_common.inc"
 //============================= [Settings] =====================================
@@ -2757,18 +2758,11 @@ public OnPlayerDisconnect(playerid,reason)
 		}
 	}
 
-	new string[64];
-	switch(reason)
-    {
-        case 0: format(string,sizeof string,"» "cred"%s has left the server. (Timed out)",GetPName(playerid));
-        case 1: format(string,sizeof string,"» "cred"%s has left the server. (Leaving)",GetPName(playerid));
-        case 2: format(string,sizeof string,"» "cred"%s has left the server. (Kicked/Banned)",GetPName(playerid));
-    }
-
     new
 		leaveMsg[128],
 		name[MAX_PLAYER_NAME],
-		reasonMsg[24];
+		reasonMsg[24],
+		string[64];
 	switch(reason)
 	{
 		case 0:
@@ -2787,6 +2781,8 @@ public OnPlayerDisconnect(playerid,reason)
 	GetPlayerName(playerid, name, sizeof(name));
 	format(leaveMsg, sizeof(leaveMsg), "02[%d] 03*** %s has left the server. (%s)", playerid, name, reasonMsg);
 	IRC_GroupSay(gGroupID, IRC_CHANNEL, leaveMsg);
+	format(string,sizeof string,"» "cred"%s has left the server. (%s)",GetPName(playerid), reasonMsg);
+	SendAdminMessage(white,string);
 
     StopAudioStreamForPlayer(playerid);
     KillTimer(TimerBait[playerid]);
@@ -2806,7 +2802,7 @@ public OnPlayerDisconnect(playerid,reason)
     CurrentObject{playerid} = 0xFFFF;
     Activated{playerid} = false;
     PlayersConnected--;
-    SendAdminMessage(white,string);
+    
     DestroyObject(PInfo[playerid][FireObject]);
     DestroyObject(PInfo[playerid][BettyObj1]);
     DestroyObject(PInfo[playerid][BettyObj2]);
@@ -2832,7 +2828,7 @@ public OnPlayerDisconnect(playerid,reason)
 	PInfo[playerid][P_INTRO_GUIDE_OPTION] = 0;
 
 	for(new p; p<sizeof pZPos; p++) RemovePlayerMapIcon(playerid, p);
-	for(new g = 0; g < 2; g++) DestroyDynamicObject(SnowObj[playerid][g]);
+	//for(new g = 0; g < 2; g++) DestroyDynamicObject(SnowObj[playerid][g]);
 
     if(CPID != -1) DisablePlayerCheckpoint(playerid);
     if(PInfo[playerid][CanBurst] == 0) PInfo[playerid][CanBurst] = 1, KillTimer(PInfo[playerid][ClearBurst]);
@@ -6912,19 +6908,19 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 			}
             case 9:
             {
-				SetPlayerPos(playerid, 237.843780, -1387.799804, 53.594272);
+				SetPlayerPos(playerid, 358.485534, -1755.051025, 5.524650);
 				SetPlayerWeather(playerid, 9);
 				SetPlayerTime(playerid, 6, 0); // Mansion
 			}
 			case 10:
             {
-				SetPlayerPos(playerid, 975.114929, -1525.581298, 13.559997);
+				SetPlayerPos(playerid, 237.843780, -1387.799804, 53.594272);
 				SetPlayerWeather(playerid, 9);
 				SetPlayerTime(playerid, 6, 0); // Super Market
 			}
 			case 11:
             {
-				SetPlayerPos(playerid, 358.485534, -1755.051025, 5.524650);
+				SetPlayerPos(playerid, 975.114929, -1525.581298, 13.559997);
 				SetPlayerWeather(playerid, 9);
 				SetPlayerTime(playerid, 6, 0); // Beach
 			}
