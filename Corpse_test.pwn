@@ -2077,7 +2077,7 @@ public OnPlayerSpawn(playerid)
 			if(PInfo[playerid][JustInfected] == 1)
 		    {
 		        //print("Infect 1");
-		        SetSpawnInfo(playerid, 0, ZombieSkins[random(sizeof(ZombieSkins))], ZPS[playerid][0], ZPS[playerid][1], ZPS[playerid][2], ZPS[playerid][3], 0, 0, 0, 0, 0, 0);
+		        SetSpawnInfo(playerid, 0, ZombieSkins[random(sizeof(ZombieSkins))], ZPS[playerid][0], ZPS[playerid][1]+2, ZPS[playerid][2]+2, ZPS[playerid][3], 0, 0, 0, 0, 0, 0);
 		        if(PInfo[playerid][Premium] == 1 || PInfo[playerid][Premium] == 2) {
 			        if(PInfo[playerid][ZSkin] != 0)	{
 				    	SetPlayerSkin(playerid, PInfo[playerid][ZSkin]); }
@@ -2088,7 +2088,7 @@ public OnPlayerSpawn(playerid)
 		        PInfo[playerid][JustInfected] = 0;
 	    	    SetPlayerColor(playerid,purple);
 			    SetPlayerArmour(playerid,0);
-			    SetPlayerHealth(playerid,150.0);
+			    SetPlayerHealth(playerid,100.0);
 		        //InfectPlayer(playerid);
 		        return 1;
 			}
@@ -2454,7 +2454,7 @@ public OnPlayerDeath(playerid,killerid,reason)
 	 	ApplyActorAnimation(cActor[playerid][ActorID], "PED", "FLOOR_hit_f", 4.1, 0, 1, 1, 1, 0);
 	 	format(str, sizeof(str), ""cwhite"Corpse: "cgreen"%s "cwhite"| Team: "cgreen"Human", cActor[playerid][Name]);
 		cActor[playerid][LabelID] = Create3DTextLabel(str, 0xFFFFFFFF, cActor[playerid][Pos][0], cActor[playerid][Pos][1], cActor[playerid][Pos][2], 10.0, cActor[playerid][World], 1);
-		SetTimerEx("KillActor", 300000, 0, "d", playerid);
+		SetTimerEx("KillActor", 150000, 0, "i", playerid);
 	
 	    InfectPlayer(playerid);
 		Team[playerid] = ZOMBIE;
@@ -2507,7 +2507,7 @@ public OnPlayerDeath(playerid,killerid,reason)
 		 	ApplyActorAnimation(cActor[playerid][ActorID], "PED", "FLOOR_hit_f", 4.1, 0, 1, 1, 1, 0);
 		 	format(str, sizeof(str), ""cwhite"Corpse: "cgreen"%s "cwhite"| Team: "cgreen"Human", cActor[playerid][Name]);
 			cActor[playerid][LabelID] = Create3DTextLabel(str, 0xFFFFFFFF, cActor[playerid][Pos][0], cActor[playerid][Pos][1], cActor[playerid][Pos][2], 10.0, cActor[playerid][World], 1);
-			SetTimerEx("KillActor", 300000, 0, "d", playerid);
+			SetTimerEx("KillActor", 150000, 0, "i", playerid);
 	    
 	    	GetPlayerPos(playerid, ZPS[playerid][0], ZPS[playerid][1], ZPS[playerid][2]);
 		    GetPlayerFacingAngle(playerid, ZPS[playerid][3]);
@@ -2567,7 +2567,7 @@ public OnPlayerDeath(playerid,killerid,reason)
 		 	ApplyActorAnimation(cActor[playerid][ActorID], "PED", "FLOOR_hit_f", 4.1, 0, 1, 1, 1, 0);
 		 	format(str, sizeof(str), ""cwhite"Corpse: "cgreen"%s "cwhite"| Team: "cgreen"Human", cActor[playerid][Name]);
 			cActor[playerid][LabelID] = Create3DTextLabel(str, 0xFFFFFFFF, cActor[playerid][Pos][0], cActor[playerid][Pos][1], cActor[playerid][Pos][2], 10.0, cActor[playerid][World], 1);
-			SetTimerEx("KillActor", 300000, 0, "d", playerid);
+			SetTimerEx("KillActor", 150000, 0, "i", playerid);
 	        
         	PInfo[killerid][Teamkills]++;
         	if(fakebullet[playerid] == 0)
@@ -2602,7 +2602,7 @@ public OnPlayerDeath(playerid,killerid,reason)
 	 	ApplyActorAnimation(cActor[playerid][ActorID], "PED", "FLOOR_hit_f", 4.1, 0, 1, 1, 1, 0);
 	 	format(string, sizeof(string), ""cwhite"Corpse: "cpurple"%s "cwhite"| Team: "cpurple"Zombie", cActor[playerid][Name]);
 		cActor[playerid][LabelID] = Create3DTextLabel(string, 0xFFFFFFFF, cActor[playerid][Pos][0], cActor[playerid][Pos][1], cActor[playerid][Pos][2], 10.0, cActor[playerid][World], 1);
-        SetTimerEx("KillActor", 300000, 0, "d", playerid);
+        SetTimerEx("KillActor", 150000, 0, "i", playerid);
 
 	    SetTimerEx("StreakTimer", 1250, false, "ii", playerid, killerid);
 
@@ -2631,7 +2631,7 @@ public OnPlayerDeath(playerid,killerid,reason)
 	 	ApplyActorAnimation(cActor[playerid][ActorID], "PED", "FLOOR_hit_f", 4.1, 0, 1, 1, 1, 0);
 	 	format(str, sizeof(str), ""cwhite"Corpse: "cgreen"%s "cwhite"| Team: "cgreen"Human", cActor[playerid][Name]);
 		cActor[playerid][LabelID] = Create3DTextLabel(str, 0xFFFFFFFF, cActor[playerid][Pos][0], cActor[playerid][Pos][1], cActor[playerid][Pos][2], 10.0, cActor[playerid][World], 1);
-		SetTimerEx("KillActor", 300000, 0, "d", playerid);
+		SetTimerEx("KillActor", 150000, 0, "i", playerid);
 	
 		GetPlayerPos(playerid, ZPS[playerid][0], ZPS[playerid][1], ZPS[playerid][2]);
 	    GetPlayerFacingAngle(playerid, ZPS[playerid][3]);
