@@ -6,6 +6,7 @@
 // =============================================================================
 //============================= [Includes] =====================================
 #include <a_samp>
+#include <crashdetect>
 #include <SII>
 #include <zcmd>
 #include <sscanf2>
@@ -18,7 +19,7 @@
 #include <OPA>
 #include <irc>
 #include <strlib>
-#include <crashdetect>
+
 //============================= [Includes] =====================================
 #include "../include/gl_common.inc"
 //============================= [Settings] =====================================
@@ -239,7 +240,11 @@ enum
  	Airdropdialog,
  	DIALOG_ANIMS,
 	Change_Pass1,
-	Change_Pass2
+	Change_Pass2,
+ 	Bullet_Dialog,
+ 	Antiscreamdialog,
+ 	Xmasdialog,
+ 	Wepsdialog
 };
 
 main(){}
@@ -342,20 +347,6 @@ new Float:Randomspawns[9][4] =
     {803.6842,-1342.0836,-0.5078,137.2818}
 };
 
-new Float:RandomEnd[10][4] =
-{
-    {291.6124,-1870.9211,3.8332,2.6989},
-    {286.9165,-1870.4952,3.8332,2.0723},
-    {288.2404,-1872.1360,6.4023,3.8073},
-    {290.3231,-1871.9995,6.4023,359.7339},
-    {258.6598,-1871.1213,2.3684,20.9005},
-    {266.5316,-1869.8938,2.5840,346.2722},
-    {269.9425,-1876.8267,2.2457,355.9013},
-    {244.6034,-1871.8011,5.8867,312.8547},
-    {246.8585,-1871.6027,5.8867,319.3258},
-    {249.5930,-1870.4410,2.3572,324.3268}
-};
-
 new Float:Platspawns[4][4] =
 {
     {2653.0486,-1387.5162,30.4438,91.7624},
@@ -364,38 +355,12 @@ new Float:Platspawns[4][4] =
     {348.7736,-1347.1180,14.5078,115.5182}
 };
 
-new Float:EndPos[30][4] =
-{
-    {280.71, -1862.43, 2.01},
-	{280.63, -1857.70, 2.01},
-	{280.69, -1853.22, 2.01},
-	{280.80, -1849.07, 2.01},
-	{276.92, -1849.00, 2.01},
-	{273.09, -1848.90, 2.01},
-	{257.49, -1862.52, 2.01},
-	{260.81, -1862.47, 2.01},
-	{254.05, -1862.55, 2.01},
-	{264.31, -1862.34, 2.01},
-	{264.44, -1859.11, 2.01},
-	{264.36, -1855.83, 2.01},
-	{260.60, -1855.80, 2.01},
-	{257.36, -1855.83, 2.01},
-	{254.24, -1855.91, 2.01},
-	{254.14, -1852.33, 2.01},
-	{254.00, -1848.95, 2.01},
-	{257.20, -1848.89, 2.01},
-	{260.68, -1849.03, 2.01},
-	{264.22, -1848.99, 2.01},
-	{245.54, -1848.97, 2.01},
-	{244.39, -1853.32, 2.01},
-	{243.30, -1857.74, 2.01},
-	{241.77, -1862.37, 2.01},
-	{239.72, -1857.76, 2.01},
-	{238.45, -1853.31, 2.01},
-	{236.86, -1848.81, 2.01},
-	{242.75, -1853.38, 2.01},
-	{241.25, -1853.40, 2.01},
-	{239.63, -1853.40, 2.01}
+new SantaPickupModel[][1] = {
+	{19054},
+	{19055},
+	{19056},
+	{19057},
+	{19058}
 };
 
 new ZombieSkins[] =
@@ -702,14 +667,13 @@ enum PlayerInfo
 	Muted,
 	ClanID,
 	ClanLeaderID,
-
 	P_STATUS,
 	P_LOGGED,
 	P_INTRO_OPTION,
 	P_INTRO_SKIN_SELECTED[2],
 	P_INTRO_GUIDE_OPTION,
-
-	P_ANTIFLOOD_TICKCOUNT
+	P_ANTIFLOOD_TICKCOUNT,
+	Silver_Bullet
 }
 
 enum
@@ -755,7 +719,6 @@ new PlayersConnected;
 new SnowObj[MAX_PLAYERS][2];
 new SnowCreated[MAX_PLAYERS];
 new Snow = 0;
-new EndObjects[32];
 new RoundEnded;
 new Mission[MAX_PLAYERS];
 new MissionPlace[MAX_PLAYERS][2];
@@ -839,7 +802,8 @@ new NotMoving[MAX_PLAYERS],
 	MRR,
 	DBWeapon[MAX_PLAYERS][13],
 	DBAmmo[MAX_PLAYERS][13],
-	Fakekill[MAX_PLAYERS];
+	Fakekill[MAX_PLAYERS],
+	fakebullet[MAX_PLAYERS];
 
 new bool:g_EnterAnim[MAX_PLAYERS char],
 	Float:g_Pos[MAX_PLAYERS][3];
@@ -948,13 +912,34 @@ new AODSkin[MAX_PLAYERS],
 
 new bool:cp_auto = false;
 
-new timer_update_stats, timer_dizzy,timer_marker,timer_fiveseconds,timer_randommessage,timer_antifake,timer_anti_wep,timer_airdt,timer_hwps, timer_pump;
+new timer_update_stats, timer_dizzy,timer_marker,timer_fiveseconds,timer_randommessage,timer_antifake,timer_anti_wep,timer_airdt,timer_hwps, timer_pump, timer_randommsg;
 new Float:obj_pos[6];
 new Float:PX, Float:PY, Float:PZ;
 new bool:GotXPFromPump[MAX_PLAYERS];
-
+new CMDWepUsed[MAX_PLAYERS];
 
 new soap_id = -1,nikolai_id = -1;
+
+new anim_name[][24] = {"PYTHON_CROUCHFIRE","UZI_CROUCHFIRE","RIFLE_CROUCHFIRE","GUNMOVE_FWD",
+						"GUN_STAND","GUNMOVE_BWD","GUNMOVE_L","GUNMOVE_R","COLT45_FIRE",
+						"colt45_crouchfire","colt45_fire_2hands","BUDDY_CROUCHFIRE","2guns_crouchfire",
+						"SILENCECROUCHFIRE","Silence_fire","shotgun_crouchfire","shotgun_fire"
+						};
+new current_anim[MAX_PLAYERS][32],current_ammo[MAX_PLAYERS][13],Timer_Bullet[MAX_PLAYERS];
+
+stock valid_anim(playerid)
+{
+	new bool:found=false;
+	for(new i = 0; i < sizeof anim_name; i++)
+	{
+	    if(!strcmp(anim_name[i],current_anim[playerid],true))
+	    {
+
+	        found = true;
+	    }
+	}
+	return found;
+}
 
 
 forward npc_fix();
@@ -1003,6 +988,7 @@ public OnGameModeInit()
 
 	SendRconCommand("mapname LS - Zombie");
     SendRconCommand("weburl www.eternal-games.net");
+    SendRconCommand("hostname [eG] LS Apocalyptic 2.1c - [Double XP!] [LagShot]");
     //SendRconCommand("hostname [eG] NEW IP: 149.56.28.180:7777");
     //SetGameModeText("Zombies VS Humans");
 
@@ -1019,7 +1005,7 @@ public OnGameModeInit()
 	timer_randommessage = RandomCPTimer = SetTimer("RandomCheckpoint", CPTIME, false);
 	//SetTimer("RandomSounds",120000, true);
 	timer_fiveseconds = SetTimer("FiveSeconds", 3000, true);
-	SetTimer("RandomMessage", 500000, true);
+	timer_randommsg = SetTimer("RandomMessage", 500000, true);
 
 	HTimer = SetTimer("TikiEvent", 600000, true);
 	AirDTimer = SetTimer("AirDropTimer", 1020000, false);
@@ -1749,12 +1735,15 @@ public OnGameModeExit()
     KillTimer(timer_airdt);
     KillTimer(timer_hwps);
     KillTimer(timer_pump);
+    KillTimer(timer_randommsg);
+
     //KillTimer()
     for(new i; i < MAX_PLAYERS;i++)
 	{
 	   	DestroyDynamicObject(SnowObj[i][0]);
 	   	DestroyDynamicObject(SnowObj[i][1]);
 	   	StopAudioStreamForPlayer(i);
+	   	CMDWepUsed[i] = 0;
 	}
 	for( new i = 0; i < 2048; i++ )
 	{
@@ -1762,10 +1751,7 @@ public OnGameModeExit()
 	   TextDrawHideForAll(Text: i);
 	   TextDrawDestroy(Text: i);
 	}
-	for(new i; i < sizeof(EndPos);i++)
-	{
-	    DestroyObject(EndObjects[i]);
-	}
+
 	cp_auto = false;
 	return 1;
 }
@@ -1791,8 +1777,8 @@ public OnPlayerRequestClass(playerid, classid)
 		InterpolateCameraPos(playerid, 1531.7229, -1628.3605, 18.8296, 1537.3767, -1637.6245, 18.8296, 45000);
 		InterpolateCameraLookAt(playerid, 1532.5765, -1627.8431, 18.6192, 1538.2301, -1637.1072, 18.6092, 45000);
 
-		SetPlayerTime(playerid, 7, 0);
-		SetPlayerWeather(playerid, 9);
+		SetPlayerTime(playerid, 32, 0);
+		SetPlayerWeather(playerid, 12);
 
 		PInfo[playerid][P_STATUS] = PS_CLASS;
 
@@ -1934,8 +1920,8 @@ public OnPlayerSpawn(playerid)
 			CheckRankup(playerid,1);
 			SetPlayerColor(playerid,green);
 
-			SetPlayerWeather(playerid, 9);
-			SetPlayerTime(playerid, 0, 0);
+			SetPlayerWeather(playerid, 32);
+			SetPlayerTime(playerid, 12, 0);
 
 			if(PInfo[playerid][Premium] == 0)
 	  		{
@@ -2043,13 +2029,13 @@ public OnPlayerSpawn(playerid)
 		        PInfo[playerid][JustInfected] = 0;
 	    	    SetPlayerColor(playerid,purple);
 			    SetPlayerArmour(playerid,0);
-			    SetPlayerHealth(playerid,150.0);
+			    SetPlayerHealth(playerid,100.0);
 		        //InfectPlayer(playerid);
 		        return 1;
 			}
 
-			SetPlayerWeather(playerid, 9);
-			SetPlayerTime(playerid, 6, 0);
+			SetPlayerWeather(playerid, 32);
+			SetPlayerTime(playerid, 12, 0);
 			Team[playerid] = ZOMBIE;
 
 		    //TimerBait[playerid] = SetTimerEx("BaitEffect", 700, true, "i", playerid);
@@ -2117,6 +2103,56 @@ public OnPlayerSpawn(playerid)
 				SetPlayerSkin(playerid, HumansSkins[ PInfo[playerid][P_INTRO_SKIN_SELECTED][1] ]); }
 			return 1;
 		}
+        new infects;
+		for(new i; i < MAX_PLAYERS;i++)
+		{
+		    if(IsPlayerConnected(i) && Team[i] == ZOMBIE)
+				infects++;
+		}
+
+		if(floatround(100.0 * floatdiv(infects, PlayersConnected)) >= 70 && CPscleared >= 3)
+		{
+		    TogglePlayerControllable(playerid, false);
+			GameTextForPlayer(playerid, "~w~Loading objects, wait..", 4000, 4);
+			SetTimerEx("ObjectsLoaded", 4000, 0, "i", playerid);
+			SetPlayerWeather(playerid, 32);
+			SetPlayerTime(playerid, 12, 0);
+			Team[playerid] = ZOMBIE;
+
+			//KillTimer(TimerBait[playerid]); // this is to fix a laggy issue, since every onplayerspawn a timer is created.. now it kills the old one.
+		    //TimerBait[playerid] = SetTimerEx("BaitEffect", 700, true, "i", playerid);
+		    SetPlayerColor(playerid,purple);
+	    	SetPlayerArmour(playerid,0);
+	    	SetPlayerHealth(playerid,150.0);
+	    	new rand = random(sizeof(RandomSpawnsZombie));
+			SetPlayerPos(playerid, RandomSpawnsZombie[rand][0], RandomSpawnsZombie[rand][1], RandomSpawnsZombie[rand][2]);
+
+		    if(PInfo[playerid][Premium] == 1 || PInfo[playerid][Premium] == 2)
+		    {
+				new DBResult:Result;
+				format(DB_Query, sizeof(DB_Query), "SELECT * FROM USERS WHERE NAME = '%s'", GetPName(playerid));
+				Result = db_query(Database, DB_Query);
+				if(db_num_rows(Result))
+				{
+					PInfo[playerid][ZSkin] = db_get_field_int(Result, 18);
+				}
+				if(PInfo[playerid][ZSkin] != 0)	{
+			   	 	SetPlayerSkin(playerid, PInfo[playerid][ZSkin]); }
+				else {
+					SetPlayerSkin(playerid, ZombieSkins[ PInfo[playerid][P_INTRO_SKIN_SELECTED][0] ]);
+				}
+
+				db_free_result(Result);
+				return 1;
+		    }
+
+	    	SetPlayerSkin(playerid, ZombieSkins[random(sizeof(ZombieSkins))]);
+	    	StopAudioStreamForPlayer(playerid);
+			PInfo[playerid][Dead] = 0;
+			SetPlayerCP(playerid);
+
+   			return 1;
+		}
 
 	    if(PInfo[playerid][SPerk] == 19) GivePlayerWeapon(playerid,16,3);
 	    ResetPlayerInventory(playerid);
@@ -2127,8 +2163,8 @@ public OnPlayerSpawn(playerid)
 		CheckRankup(playerid,1);
 		SetPlayerColor(playerid,green);
 
-		SetPlayerWeather(playerid, 9);
-		SetPlayerTime(playerid, 0, 0);
+		SetPlayerWeather(playerid, 32);
+		SetPlayerTime(playerid, 12, 0);
 
 		if(PInfo[playerid][Premium] == 0)
   		{
@@ -2245,8 +2281,8 @@ public OnPlayerSpawn(playerid)
 		GameTextForPlayer(playerid, "~w~Loading objects, wait..", 4000, 4);
 		SetTimerEx("ObjectsLoaded", 4000, 0, "i", playerid);
 
-		SetPlayerWeather(playerid, 9);
-		SetPlayerTime(playerid, 6, 0);
+		SetPlayerWeather(playerid, 32);
+		SetPlayerTime(playerid, 12, 0);
 		Team[playerid] = ZOMBIE;
 
 		//KillTimer(TimerBait[playerid]); // this is to fix a laggy issue, since every onplayerspawn a timer is created.. now it kills the old one.
@@ -2288,11 +2324,17 @@ public OnPlayerRequestSpawn(playerid)
 	return 1;
 }
 
+
+
 public OnPlayerDeath(playerid,killerid,reason)
 {
 	if(IsPlayerNPC(killerid) || IsPlayerNPC(playerid)) return 1;
-	/*      Anti Fake Kill        */
- 	Fakekill[playerid]++;
+	
+	/*      Anti Fake Kill
+	      */
+
+	if(fakebullet[playerid] == 0)
+ 		Fakekill[playerid]++;
     /*----------------------------*/
     g_EnterAnim{playerid} = false;
     PInfo[playerid][Dead] = 1;
@@ -2401,7 +2443,8 @@ public OnPlayerDeath(playerid,killerid,reason)
 	    else
 	    {
         	PInfo[killerid][Teamkills]++;
-        	SendClientMessage(killerid,white,"» "cred"Team killing is not allowed! "cwhite"«");
+        	if(fakebullet[playerid] == 0)
+        		SendClientMessage(killerid,white,"» "cred"Team killing is not allowed! "cwhite"«");
         	PInfo[playerid][Deaths]++;
         	CheckRankup(playerid);
     	}
@@ -2762,7 +2805,7 @@ public OnPlayerDisconnect(playerid,reason)
 		leaveMsg[128],
 		name[MAX_PLAYER_NAME],
 		reasonMsg[24],
-		string[64];
+		string[64+24];
 	switch(reason)
 	{
 		case 0:
@@ -2801,8 +2844,10 @@ public OnPlayerDisconnect(playerid,reason)
     PInfo[playerid][BettyActive3] = 0;
     CurrentObject{playerid} = 0xFFFF;
     Activated{playerid} = false;
+    aDuty{playerid} = false;
+    CMDWepUsed[playerid] = 0;
     PlayersConnected--;
-    
+
     DestroyObject(PInfo[playerid][FireObject]);
     DestroyObject(PInfo[playerid][BettyObj1]);
     DestroyObject(PInfo[playerid][BettyObj2]);
@@ -2828,7 +2873,7 @@ public OnPlayerDisconnect(playerid,reason)
 	PInfo[playerid][P_INTRO_GUIDE_OPTION] = 0;
 
 	for(new p; p<sizeof pZPos; p++) RemovePlayerMapIcon(playerid, p);
-	//for(new g = 0; g < 2; g++) DestroyDynamicObject(SnowObj[playerid][g]);
+	for(new g = 0; g < 2; g++) DestroyDynamicObject(SnowObj[playerid][g]);
 
     if(CPID != -1) DisablePlayerCheckpoint(playerid);
     if(PInfo[playerid][CanBurst] == 0) PInfo[playerid][CanBurst] = 1, KillTimer(PInfo[playerid][ClearBurst]);
@@ -2848,10 +2893,10 @@ public OnPlayerConnect(playerid)
 {
 	new
 		joinMsg[128],
-		str[64],
+		str[64+24],
 		name[MAX_PLAYER_NAME];
 	GetPlayerName(playerid, name, sizeof(name));
-	
+
 	format(joinMsg, sizeof(joinMsg), "02[%d] 03*** %s joined to the server.", playerid, name);
 	IRC_GroupSay(gGroupID, IRC_CHANNEL, joinMsg);
 
@@ -2892,6 +2937,11 @@ public OnPlayerConnect(playerid)
 		}
   		return 1;
   	}
+    current_anim[playerid] = "";
+	for(new i = 0; i <= 12; i++)
+	{
+	    current_ammo[playerid][i] = 0;
+	}
 
 	PlaySound(playerid,1077);
     PlayersConnected++;
@@ -2901,8 +2951,8 @@ public OnPlayerConnect(playerid)
     GotXPFromPump[playerid] = false;
 	PInfo[playerid][P_STATUS] = PS_CONNECTED;
 	CBugTimes[playerid] = 0;
-	SetPlayerWeather(playerid, 9);
-	SetPlayerTime(playerid, 6, 0);
+	SetPlayerWeather(playerid, 32);
+	SetPlayerTime(playerid, 12, 0);
 	PlayerState[playerid] = false;
 	PInfo[playerid][ClanID] = 0;
 	PInfo[playerid][ClanLeaderID] = 0;
@@ -2956,8 +3006,11 @@ public OnPlayerConnect(playerid)
     Mission[playerid] = 0;
     MissionPlace[playerid][0] = 0;
     MissionPlace[playerid][1] = 0;
+    PInfo[playerid][Silver_Bullet] = 0;
     CurrentObject{playerid} = 0xFFFF;
     Activated{playerid} = false;
+    aDuty{playerid} = false;
+    CMDWepUsed[playerid] = 0;
     RemovePlayerMapIcon(playerid,1);
 	/*new label[64];
 	format(label,sizeof label,""cgreen"Rank: %i | XP: %i/%i",PInfo[playerid][Rank],PInfo[playerid][XP],PInfo[playerid][XPToRankUp]);
@@ -3076,11 +3129,34 @@ public OnPlayerConnect(playerid)
 
 	PlayAudioStreamForPlayer(playerid, ZombieMusic[ random(sizeof ZombieMusic) ] );
     SendClientMessage(playerid, white, "» "cgold"Loading server data ...");
+
+    RemoveBuildingForPlayer(playerid, 6049, 1009.3359, -1891.7891, 11.9297, 0.25);
+	RemoveBuildingForPlayer(playerid, 1231, 1013.1719, -1933.0859, 13.9453, 0.25);
+	RemoveBuildingForPlayer(playerid, 1231, 1012.1250, -1911.7031, 14.5703, 0.25);
+	RemoveBuildingForPlayer(playerid, 792, 1012.2813, -1916.4531, 11.7266, 0.25);
+	RemoveBuildingForPlayer(playerid, 1280, 1011.3594, -1907.7656, 11.7891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1280, 1010.9297, -1895.3672, 11.7891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1280, 1011.1875, -1901.7344, 11.7891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1231, 1011.0703, -1890.3203, 14.0938, 0.25);
+	RemoveBuildingForPlayer(playerid, 792, 1011.1016, -1880.8594, 11.7969, 0.25);
+	RemoveBuildingForPlayer(playerid, 1280, 1010.5703, -1884.9141, 11.7891, 0.25);
+	RemoveBuildingForPlayer(playerid, 6050, 1019.7656, -1921.6250, 13.5938, 0.25);
+	RemoveBuildingForPlayer(playerid, 3340, 2549.2188, -955.9063, 81.2891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1407, 2541.3828, -962.5391, 81.6953, 0.25);
+	RemoveBuildingForPlayer(playerid, 1410, 2543.8984, -964.5078, 81.8281, 0.25);
+	RemoveBuildingForPlayer(playerid, 1407, 2548.4922, -963.7813, 82.0625, 0.25);
+	RemoveBuildingForPlayer(playerid, 3167, 2549.2188, -955.9063, 81.2891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1410, 2540.8516, -957.9141, 81.8516, 0.25);
+	RemoveBuildingForPlayer(playerid, 1410, 2557.4766, -951.4141, 82.4453, 0.25);
+	RemoveBuildingForPlayer(playerid, 1407, 2558.2422, -956.0000, 82.5078, 0.25);
+	RemoveBuildingForPlayer(playerid, 13054, -61.4531, -36.9922, 1.9766, 0.25);
+	RemoveBuildingForPlayer(playerid, 12911, -61.4531, -36.9922, 1.9766, 0.25);
 	return 1;
 }
 
 public OnPlayerEnterCheckpoint(playerid)
 {
+    if(IsSpecing[playerid] == 1) return 1;
     if(PInfo[playerid][Firsttimeincp] == 1)
     {
         if(Team[playerid] == ZOMBIE) return 0;
@@ -3181,6 +3257,93 @@ public OnRconLoginAttempt(ip[], password[], success) // ANTI-FAILED-RCON-LOGIN: 
     return 1;
 }
 
+CMD:christmas(playerid, params[])
+{
+    SendClientMessage(playerid, -1, " ");
+    SendClientMessage(playerid, -1, ""cgold"* Christmas Features *");
+	SendClientMessage(playerid, -1, ""cwhite"1. - Double "cgreen"XP "cwhite"UP!");
+	SendClientMessage(playerid, -1, ""cwhite"2. - "cred"Anti Screamer "cwhite"perk added for rank 22.");
+	SendClientMessage(playerid, -1, ""cwhite"3. - Tiki event changed to Christmas event with random gift pickups. "cgreen"(Now it gives more XP(max 55 XP))");
+	SendClientMessage(playerid, -1, ""cwhite"4. - Snow at the street and falling snow. "cred"(/snow)");
+	SendClientMessage(playerid, -1, ""cwhite"5. - Player weapons in "cgreen"player stats "cwhite"(in TAB)");
+	SendClientMessage(playerid, -1, ""cwhite"6. - Commands "cred"/weapons "cwhite"and "cred"/setweps "cwhite"added.");
+	SendClientMessage(playerid, -1, ""cwhite"7. - New "cgreen"cam position "cwhite"at the end of the round.");
+	SendClientMessage(playerid, -1, ""cgold"==========================================");
+	SendClientMessage(playerid, -1, " ");
+	return 1;
+}
+
+CMD:weapons(playerid, params[])
+{
+    if(Team[playerid] == ZOMBIE) return 1;
+    if(CMDWepUsed[playerid] >= 2) return SendClientMessage(playerid, red, "You already used this command two times, wait until the round end.");
+    ShowPlayerDialog(playerid, Wepsdialog, DIALOG_STYLE_INPUT, ""cwhite"- Weapons", ""cwhite"Write the number of the weapons rank you want to get it.\n"cred"You only can use this command two times:", "Accept", "Cancel");
+	return 1;
+}
+
+CMD:setweps(playerid, params[])
+{
+	if(sscanf(params, "d", params[0])) return SendClientMessage(playerid, white, "USAGE: /weapons [Rank level] ");
+	if(params[0] < 1 || params[0] > PInfo[playerid][Rank]) return SendClientMessage(playerid, white, "USAGE: /weapons [Rank level]");
+	if(PInfo[playerid][Premium] < 1) return SendClientMessage(playerid, red, "You have to be premium to use this command!");
+	if(CMDWepUsed[playerid] >= 2) return SendClientMessage(playerid, red, "You already used this command two times, wait until the round end.");
+	if(Team[playerid] == ZOMBIE) return 1;
+	
+    switch(params[0])
+	{
+	    case 1: GivePlayerWeapon(playerid,23,90),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,5),CMDWepUsed[playerid]++;
+	    case 2: GivePlayerWeapon(playerid,23,110),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,10),CMDWepUsed[playerid]++;
+	    case 3: GivePlayerWeapon(playerid,23,160),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,15),CMDWepUsed[playerid]++;
+	    case 4: GivePlayerWeapon(playerid,23,190),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,20),CMDWepUsed[playerid]++;
+	    case 5: GivePlayerWeapon(playerid,22,100),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,25),CMDWepUsed[playerid]++;
+	    case 6: GivePlayerWeapon(playerid,22,150),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,30),CMDWepUsed[playerid]++;
+	    case 7: GivePlayerWeapon(playerid,22,200),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,35),CMDWepUsed[playerid]++;
+	    case 8: GivePlayerWeapon(playerid,22,250),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,40),CMDWepUsed[playerid]++;
+	    case 9: GivePlayerWeapon(playerid,22,300),GivePlayerWeapon(playerid,6,1),GivePlayerWeapon(playerid,25,45),CMDWepUsed[playerid]++;
+	    case 10: GivePlayerWeapon(playerid,22,300),GivePlayerWeapon(playerid,6,1),GivePlayerWeapon(playerid,25,100),GivePlayerWeapon(playerid,33,25),CMDWepUsed[playerid]++;
+	    case 11: GivePlayerWeapon(playerid,22,400),GivePlayerWeapon(playerid,6,1),GivePlayerWeapon(playerid,25,150),GivePlayerWeapon(playerid,33,30),CMDWepUsed[playerid]++;
+	    case 12: GivePlayerWeapon(playerid,22,500),GivePlayerWeapon(playerid,6,1),GivePlayerWeapon(playerid,25,250),GivePlayerWeapon(playerid,33,35),CMDWepUsed[playerid]++;
+	    case 13: GivePlayerWeapon(playerid,22,650),GivePlayerWeapon(playerid,6,1),GivePlayerWeapon(playerid,25,350),GivePlayerWeapon(playerid,33,40),CMDWepUsed[playerid]++;
+	    case 14: GivePlayerWeapon(playerid,22,750),GivePlayerWeapon(playerid,5,1),GivePlayerWeapon(playerid,25,350),GivePlayerWeapon(playerid,33,45),CMDWepUsed[playerid]++;
+	    case 15: GivePlayerWeapon(playerid,24,100),GivePlayerWeapon(playerid,5,1),GivePlayerWeapon(playerid,25,350),GivePlayerWeapon(playerid,33,50),CMDWepUsed[playerid]++;
+	    case 16: GivePlayerWeapon(playerid,24,150),GivePlayerWeapon(playerid,5,1),GivePlayerWeapon(playerid,25,400),GivePlayerWeapon(playerid,33,55),CMDWepUsed[playerid]++;
+	    case 17: GivePlayerWeapon(playerid,24,200),GivePlayerWeapon(playerid,5,1),GivePlayerWeapon(playerid,25,450),GivePlayerWeapon(playerid,33,60),CMDWepUsed[playerid]++;
+	    case 18: GivePlayerWeapon(playerid,24,250),GivePlayerWeapon(playerid,5,1),GivePlayerWeapon(playerid,25,500),GivePlayerWeapon(playerid,33,65),CMDWepUsed[playerid]++;
+	    case 19: GivePlayerWeapon(playerid,24,300),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,500),GivePlayerWeapon(playerid,33,70),CMDWepUsed[playerid]++;
+	    case 20: GivePlayerWeapon(playerid,24,350),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,550),GivePlayerWeapon(playerid,28,120),GivePlayerWeapon(playerid,33,75),CMDWepUsed[playerid]++;
+	    case 21: GivePlayerWeapon(playerid,24,400),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,600),GivePlayerWeapon(playerid,28,200),GivePlayerWeapon(playerid,33,80),CMDWepUsed[playerid]++;
+	    case 22: GivePlayerWeapon(playerid,24,450),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,650),GivePlayerWeapon(playerid,28,250),GivePlayerWeapon(playerid,33,85),CMDWepUsed[playerid]++;
+	    case 23: GivePlayerWeapon(playerid,24,500),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,700),GivePlayerWeapon(playerid,28,300),GivePlayerWeapon(playerid,33,90),CMDWepUsed[playerid]++;
+	    case 24: GivePlayerWeapon(playerid,24,550),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,750),GivePlayerWeapon(playerid,28,350),GivePlayerWeapon(playerid,33,95),CMDWepUsed[playerid]++;
+	    case 25: GivePlayerWeapon(playerid,24,600),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,26,150),GivePlayerWeapon(playerid,28,400),GivePlayerWeapon(playerid,33,100),CMDWepUsed[playerid]++;
+	    case 26: GivePlayerWeapon(playerid,24,650),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,26,200),GivePlayerWeapon(playerid,28,450),GivePlayerWeapon(playerid,33,110),CMDWepUsed[playerid]++;
+	    case 27: GivePlayerWeapon(playerid,24,700),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,26,250),GivePlayerWeapon(playerid,28,500),GivePlayerWeapon(playerid,33,120),CMDWepUsed[playerid]++;
+	    case 28: GivePlayerWeapon(playerid,24,750),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,26,300),GivePlayerWeapon(playerid,28,550),GivePlayerWeapon(playerid,33,130),CMDWepUsed[playerid]++;
+	    case 29: GivePlayerWeapon(playerid,24,800),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,26,400),GivePlayerWeapon(playerid,28,600),GivePlayerWeapon(playerid,33,140),CMDWepUsed[playerid]++;
+	    case 30: GivePlayerWeapon(playerid,24,600),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,26,150),GivePlayerWeapon(playerid,32,100),GivePlayerWeapon(playerid,33,150),CMDWepUsed[playerid]++;
+		case 31: GivePlayerWeapon(playerid,24,700),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,26,200),GivePlayerWeapon(playerid,32,150),GivePlayerWeapon(playerid,33,160),CMDWepUsed[playerid]++;
+		case 32: GivePlayerWeapon(playerid,24,800),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,26,250),GivePlayerWeapon(playerid,32,200),GivePlayerWeapon(playerid,33,170),CMDWepUsed[playerid]++;
+        case 33: GivePlayerWeapon(playerid,24,900),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,26,300),GivePlayerWeapon(playerid,32,300),GivePlayerWeapon(playerid,33,180),CMDWepUsed[playerid]++;
+        case 34: GivePlayerWeapon(playerid,24,1000),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,26,400),GivePlayerWeapon(playerid,32,400),GivePlayerWeapon(playerid,33,190),CMDWepUsed[playerid]++;
+        case 35..50: GivePlayerWeapon(playerid,24,700),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,27,50),GivePlayerWeapon(playerid,32,150),GivePlayerWeapon(playerid,3,250),GivePlayerWeapon(playerid,30,200),CMDWepUsed[playerid]++;
+	}
+	return 1;
+}
+
+CMD:snow(playerid, params[])
+{
+	if(sscanf(params, "d", params[0])) return SendClientMessage(playerid, white, "USAGE: /snow [1 - ON | 2 - OFF] ");
+	if(params[0] == 1)
+	{
+    	SnowSettings(playerid, true);
+	}
+	else if(params[0] == 2)
+	{
+	    SnowSettings(playerid, false);
+	}
+	else SendClientMessage(playerid, white, "USAGE: /snow [1 - ON | 2 - OFF] ");
+	return 1;
+}
 
 CMD:ircpm(playerid,params[])
 {
@@ -3568,7 +3731,7 @@ CMD:animsoff(playerid, params[])
 
 CMD:gototiki(playerid, params[])
 {
-	if(PInfo[playerid][Level] < 4) return SendClientMessage(playerid, white, "* "cred"You have to be administrator to use this command.");
+	if(PInfo[playerid][Level] < 5) return SendClientMessage(playerid, white, "Unknown command.");
 	if(TikiStatueOn == 0) return SendClientMessage(playerid, -1, "Tiki isn't spawned.");
 	if(Winner == 1) return SendClientMessage(playerid, -1, "There is no Tiki spawn.");
 	if(GetPlayerState(playerid) == 2) SetVehiclePos(GetPlayerVehicleID(playerid), RandomPositions[Number][0], RandomPositions[Number][1]+5, RandomPositions[Number][2]);
@@ -4530,7 +4693,7 @@ CMD:acmds(playerid,params[])
 	}
 	if(PInfo[playerid][Level] >= 2) SendClientMessage(playerid, white,""cgreen"General admin commands: "cwhite"/goto - /get - /warn - /setint - /setvw - /say");
 	if(PInfo[playerid][Level] >= 3) SendClientMessage(playerid, white,""cgreen"Senior admin commands: "cwhite"/heal - /bslap - /ban - /announce");
-	if(PInfo[playerid][Level] >= 4) SendClientMessage(playerid, white,""cgreen"Lead admin commands: "cwhite"/sethealth - /setarmour - /rape - /getip - /rangeban - /makeleader - /gototiki");
+	if(PInfo[playerid][Level] >= 4) SendClientMessage(playerid, white,""cgreen"Lead admin commands: "cwhite"/sethealth - /setarmour - /rape - /getip - /rangeban - /makeleader");
 	if(PInfo[playerid][Level] >= 5)
 	{
 		SendClientMessage(playerid, white,""cgreen"Head admin commands: "cwhite"/nuke - /savecar - /setlevel (rcon) - /setprem - /setname");
@@ -4965,9 +5128,9 @@ CMD:warn(playerid,params[])
     format(DB_Query, sizeof(DB_Query), "");
 	strcat(DB_Query, "UPDATE USERS SET ");
 	format(str, 64, "Warns = '%i',", PInfo[id][Warns]); strcat(DB_Query, str);
-	if(PInfo[id][Warns] == 1) format(str, 64, "WARN1 = '%s'", warn); strcat(DB_Query, str); PInfo[id][Warn1] = warn;
-	if(PInfo[id][Warns] == 2) format(str, 64, "WARN2 = '%s'", warn); strcat(DB_Query, str); PInfo[id][Warn2] = warn;
-	if(PInfo[id][Warns] == 3) format(str, 64, "WARN3 = '%s'", warn); strcat(DB_Query, str); PInfo[id][Warn3] = warn;
+	format(str, 64, " WARN%d = '%s'", PInfo[id][Warns], warn); strcat(DB_Query, str);
+	/*if(PInfo[id][Warns] == 2) format(str, 64, " WARN2 = '%s'", warn); strcat(DB_Query, str); PInfo[id][Warn2] = warn;
+	if(PInfo[id][Warns] == 3) format(str, 64, " WARN3 = '%s'", warn); strcat(DB_Query, str); PInfo[id][Warn3] = warn;*/
 	format(str, 64, " WHERE NAME = '%s'", GetPName(id)); strcat(DB_Query, str);
 	db_query(Database, DB_Query);
 
@@ -4977,7 +5140,7 @@ CMD:warn(playerid,params[])
 	{
 		new d,mm,y;
 		getdate(y,mm,d);
-		format(DB_Query, sizeof(DB_Query), "SELECT * FROM USERS WHERE NAME = '%s'", GetPName(playerid));
+  		format(DB_Query, sizeof(DB_Query), "SELECT * FROM USERS WHERE NAME = '%s'", GetPName(id));
 		Result = db_query(Database, DB_Query);
 		if(db_num_rows(Result))
 		{
@@ -5066,6 +5229,16 @@ CMD:setrank(playerid,params[])
 	if(!IsPlayerConnected(playerid)) return SendClientMessage(playerid,red,"» Error: That player isn't connected!");
 	SendFMessageToAll(red,"» Administrator %s(%i) has setted %s(%i) rank to %i",GetPName(playerid),playerid,GetPName(id),id,level);
 	PInfo[id][Rank] = level;
+
+	new string2[45];
+	if(PInfo[id][Premium] == 1) {
+		format(string2,sizeof string2,""cgold"Rank: %i | XP: %i/%i",PInfo[id][Rank],PInfo[id][XP],PInfo[id][XPToRankUp]); }
+	else if(PInfo[id][Premium] == 2) {
+	    format(string2,sizeof string2,""cplat"Rank: %i | XP: %i/%i",PInfo[id][Rank],PInfo[id][XP],PInfo[id][XPToRankUp]); }
+	else {
+	    format(string2,sizeof string2,""cpurple"Rank: %i | XP: %i/%i",PInfo[id][Rank],PInfo[id][XP],PInfo[id][XPToRankUp]); }
+    Update3DTextLabelText(PInfo[id][Ranklabel],purple,string2);
+
 	ResetPlayerWeapons(id);
 	CheckRankup(id,1);
 	SaveStats(id);
@@ -5133,6 +5306,21 @@ CMD:setinfects(playerid,params[])
 	return 1;
 }
 
+forward anti_bullet(playerid,killerid,deaths,teamkills,kills);
+public anti_bullet(playerid,killerid,deaths,teamkills,kills)
+{
+    Fakekill[playerid] = 0;
+
+    new df = PInfo[playerid][Deaths] - deaths, tkd = PInfo[killerid][Teamkills] - teamkills,
+		kf = PInfo[killerid][Kills] - killerid;
+    if(df > 1)
+        PInfo[playerid][Deaths] = deaths + 1;
+	if(tkd > 1)
+	    PInfo[killerid][Teamkills] = teamkills + 1;
+	if(kf > 1)
+	    PInfo[killerid][Kills] = kills + 1;
+}
+
 public OnPlayerTakeDamage(playerid, issuerid, Float: amount, weaponid)
 {
     PlaySound(issuerid,6401);
@@ -5192,6 +5380,18 @@ public OnPlayerTakeDamage(playerid, issuerid, Float: amount, weaponid)
    				else
 		   			SetPlayerHealth(playerid,newh);
 		    }
+		    case 22,23,24,25,26,27,28,29,30,31,32,33,34:
+		    {
+		        if(PInfo[issuerid][Silver_Bullet] > 23 && Team[issuerid] == HUMAN)
+		        {
+		            fakebullet[playerid]++;
+		            if(fakebullet[playerid] >= 1)
+	    				SetTimerEx("anti_bullet", 500, 0, "ddddd", playerid,issuerid,PInfo[playerid][Deaths],PInfo[issuerid][Teamkills],PInfo[issuerid][Kills]);
+
+		            OnPlayerDeath(playerid,issuerid,weaponid);
+					SetPlayerHealth(playerid,0);
+		        }
+		    }
 
 		}
 
@@ -5226,6 +5426,7 @@ public OnPlayerTakeDamage(playerid, issuerid, Float: amount, weaponid)
 	}
     return 1;
 }
+
 
 public OnPlayerInteriorChange(playerid, newinteriorid, oldinteriorid)
 {
@@ -5338,6 +5539,52 @@ public OnPlayerEnterVehicle(playerid,vehicleid, ispassenger)
 	return 1;
 }
 
+forward timer_bullet(playerid);
+public timer_bullet(playerid)
+{
+    new animlib[32];
+
+  	GetAnimationName(GetPlayerAnimationIndex(playerid),animlib,32,current_anim[playerid],32);
+	new weaponid = GetPlayerWeapon(playerid);
+    if(valid_anim(playerid) && PInfo[playerid][SPerk] == 15)
+	{
+	    new weapons[13][2];
+	    new bool:ok = false;
+		for (new i = 2; i <= 6; i++)
+		{
+			GetPlayerWeaponData(playerid, i, weapons[i][0], weapons[i][1]);
+			if(weapons[i][1] > 0)
+			{
+				if(current_ammo[playerid][i] != weapons[i][1])
+				{
+				   	ok = true;
+				   	current_ammo[playerid][i] = weapons[i][1];
+				}
+			}
+		}
+		if(ok == true)
+		{
+	    	switch(weaponid)
+			{
+				case 22,23,24,25,26,27,28,29,30,31,32,33,34:
+				{
+					PInfo[playerid][Silver_Bullet]++;
+					if(PInfo[playerid][Silver_Bullet] >= 25)
+	   					PInfo[playerid][Silver_Bullet] = 0;
+					if(PInfo[playerid][Silver_Bullet] == 23)
+					{
+               			SendClientMessage(playerid, -1, "Next bullet is the final blow!");
+					}
+				}
+			}
+		}
+	}
+	else if(PInfo[playerid][SPerk] != 15)
+	{
+	    KillTimer(Timer_Bullet[playerid]);
+	}
+}
+
 public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 {
 	if(IsPlayerNPC(playerid)) return 1;
@@ -5356,6 +5603,10 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 	if(PRESSED(KEY_CROUCH) )
     //else if(newkeys & KEY_CROUCH)
 	{
+	    if(HasAnyWeapon(playerid) == 0)
+	    {
+	        Team[playerid] = ZOMBIE;
+	    }
 		if(Team[playerid] == ZOMBIE)
 		{
 		    for(new p; p<sizeof pZPos; p++)
@@ -5373,7 +5624,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			GetObjectPos(airdropitem, obj_pos2[0], obj_pos2[1], obj_pos2[2]);
 			if(AirDroppedItem{airdropitem} == true) return 1;
 			if(HasGettedDropItem{playerid} == true) return 1;
-			if(IsPlayerInRangeOfPoint(playerid, 2.5, obj_pos2[0], obj_pos2[1], obj_pos2[2]))
+			if(IsPlayerInRangeOfPoint(playerid, 4.0, obj_pos2[0], obj_pos2[1], obj_pos2[2]))
 			{
 			    new rand = random(6);
 				switch(rand)
@@ -5502,7 +5753,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 				SetTimerEx("StopBait", 5000, false, "i", playerid);
 				SetTimerEx("UseBaitAgain", 150000, false, "i", playerid);
 			}
-		}
+		}/*
 		else if(PInfo[playerid][SPerk] == 15)
 		{
 		    if(Team[playerid] == ZOMBIE) return 0;
@@ -5512,7 +5763,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
             SetPlayerMapIcon(playerid,0,x,y,z,56,0,MAPICON_GLOBAL);
 			DestroyObject(PInfo[playerid][Flare]);
 			PInfo[playerid][Flare] = CreateObject(18728,x,y,z-1,0,0,0,200);
-		}
+		}*/
 	}
 	if(PRESSED(KEY_SPRINT | KEY_CROUCH))
 	//if((newkeys & KEY_SPRINT) && (newkeys & KEY_CROUCH))
@@ -5615,9 +5866,9 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
             new animlib[32];
          	new animname[32];
 
-         	GetAnimationName(GetPlayerAnimationIndex(playerid),animlib,32,animname,32);
-
-            if(GetPlayerWeapon(playerid) == 17)
+         	GetAnimationName(GetPlayerAnimationIndex(playerid),animlib,32,current_anim[playerid],32);
+			new weaponid = GetPlayerWeapon(playerid);
+            if(weaponid == 17)
             {
                 if(!strcmp(animname,"WEAPON_start_throw",true) || !strcmp(animname,"WEAPON_throw",true)  || !strcmp(animname,"WEAPON_throwu",true))
                 {
@@ -5630,6 +5881,40 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 		        			SetTimerEx("Flashbang",3000,0,"i",i);
 						}
 					}
+				}
+			}
+			else if(valid_anim(playerid) && PInfo[playerid][SPerk] == 15)
+			{
+			    new weapons[13][2];
+			    new bool:ok = false;
+
+				for (new i = 2; i <= 6; i++)
+				{
+    				GetPlayerWeaponData(playerid, i, weapons[i][0], weapons[i][1]);
+    				if(weapons[i][1] > 0)
+    				{
+						if(current_ammo[playerid][i] != weapons[i][1])
+						{
+						   	ok = true;
+						   	current_ammo[playerid][i] = weapons[i][1];
+						}
+    				}
+				}
+				if(ok == true)
+				{
+			    	switch(weaponid)
+					{
+						case 22,23,24,25,26,27,28,29,30,31,32,33,34:
+						{
+							PInfo[playerid][Silver_Bullet]++;
+							if(PInfo[playerid][Silver_Bullet] >= 25)
+			   					PInfo[playerid][Silver_Bullet] = 0;
+							if(PInfo[playerid][Silver_Bullet] == 23)
+							{
+                    			SendClientMessage(playerid, -1, "Next bullet is the final blow!");
+							}
+						}
+    				}
 				}
 			}
         }
@@ -6221,24 +6506,9 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 		    if(PInfo[playerid][ZPerk] == 14)
 		    {
 		        if(PInfo[playerid][GodDig] == 1) return SendClientMessage(playerid,red,"You are to tired to dig!");
-		        new id = -1,count = 0;
-		        goto func;
-		        func:
-		        {
-					new rand = random(PlayersConnected);
-					if(Team[rand] == ZOMBIE)
-					{
-					    if(!IsPlayerConnected(rand) || IsPlayerNPC(rand)) goto func;
-						if(count >= 1 || RoundEnded == 1 || PlayersConnected == 0) return SendClientMessage(playerid,white,"* "cred"Everyone is a zombie!");
-						else
-						{
-						    count++;
-							goto func;
-						}
-					}
-					else id = rand;
-		        }
-				if(id == -1) return SendClientMessage(playerid,red,"It seems like the server is empty o.o'");
+		        new id = GetClosestPlayerGod(playerid);
+
+				if(id == -1) return SendClientMessage(playerid,red,"It seems like the server is empty or everyone is zombie ! o.o'");
 				if(PInfo[id][P_STATUS] != PS_SPAWNED) return 1;
 
 				PInfo[playerid][GodDig] = 1;
@@ -6428,7 +6698,9 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 	}
 	if(PRESSED(KEY_HANDBRAKE))//Aim Key
 	{
+	    new string[256];
 	    if(Team[playerid] != ZOMBIE) return 0;
+	    if(IsSpecing[playerid] == 1) return 0;
 	    if(PInfo[playerid][CanBite] == 0) return 0;
         if(PInfo[playerid][ZPerk] == 8)
 		{
@@ -6441,7 +6713,9 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			    if(Team[i] == ZOMBIE) continue;
 			    if(IsPlayerNPC(i)) continue;
 		        //if(IsPlayerInAnyVehicle(i)) continue;
-		        if(PInfo[i][Rank] <= 5) continue;
+		        if(PInfo[i][Rank] <= 4) continue;
+		        if(PInfo[i][SPerk] == 21) continue;
+		        
 		        new Float:x,Float:y,Float:z;
 		    	GetPlayerPos(playerid,x,y,z);
 		        if(IsPlayerInRangeOfPoint(i, 15.0,x,y,z))
@@ -6494,6 +6768,18 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 						    format(string2,sizeof string2,""cplat"Rank: %i | XP: %i/%i",PInfo[i][Rank],PInfo[i][XP],PInfo[i][XPToRankUp]); }
 						else {
 						    format(string2,sizeof string2,""cpurple"Rank: %i | XP: %i/%i",PInfo[i][Rank],PInfo[i][XP],PInfo[i][XPToRankUp]); }
+                        Update3DTextLabelText(PInfo[i][Ranklabel],purple,string2);
+
+						format(string,sizeof string,"Rank:_%i~n~Infects:_%i~n~Deaths:_%i~n~Bites:_%i~n~Perk:_%i~n~Assists:_%i~n~Vomited:_%i",
+							PInfo[i][Rank],
+							PInfo[i][Infects],
+							PInfo[i][Deaths],
+							PInfo[i][Bites],
+							PInfo[i][ZPerk]+1,
+							PInfo[i][Assists],
+							PInfo[i][Vomited]
+						);
+				        PlayerTextDrawSetString(i, StatsBoxDraw[i], string);
 				 	}
 		        }
 				if(PInfo[i][Infected] == 0) PInfo[i][Infected] = 1;
@@ -6513,7 +6799,9 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
       		    if(IsPlayerNPC(i)) continue;
 			    if(PInfo[i][Dead] == 1) continue;
 			    if(Team[i] == ZOMBIE) continue;
-			    if(PInfo[i][Rank] <= 5) continue;
+			    if(PInfo[i][Rank] <= 4) continue;
+			    if(PInfo[i][SPerk] == 21) continue;
+			    
        			new Float:x,Float:y,Float:z;
 		    	GetPlayerPos(playerid,x,y,z);
 		        if(IsPlayerInRangeOfPoint(i,20.0, x, y, z))
@@ -6556,6 +6844,26 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 						 	    PInfo[playerid][Screams]++;
 							    GivePlayerXP(playerid);
 							    CheckRankup(playerid);
+
+							    new string2[45];
+								if(PInfo[i][Premium] == 1) {
+									format(string2,sizeof string2,""cgold"Rank: %i | XP: %i/%i",PInfo[i][Rank],PInfo[i][XP],PInfo[i][XPToRankUp]); }
+								else if(PInfo[i][Premium] == 2) {
+								    format(string2,sizeof string2,""cplat"Rank: %i | XP: %i/%i",PInfo[i][Rank],PInfo[i][XP],PInfo[i][XPToRankUp]); }
+								else {
+								    format(string2,sizeof string2,""cpurple"Rank: %i | XP: %i/%i",PInfo[i][Rank],PInfo[i][XP],PInfo[i][XPToRankUp]); }
+		                        Update3DTextLabelText(PInfo[i][Ranklabel],purple,string2);
+
+								format(string,sizeof string,"Rank:_%i~n~Infects:_%i~n~Deaths:_%i~n~Bites:_%i~n~Perk:_%i~n~Assists:_%i~n~Vomited:_%i",
+									PInfo[i][Rank],
+									PInfo[i][Infects],
+									PInfo[i][Deaths],
+									PInfo[i][Bites],
+									PInfo[i][ZPerk]+1,
+									PInfo[i][Assists],
+									PInfo[i][Vomited]
+								);
+						        PlayerTextDrawSetString(i, StatsBoxDraw[i], string);
 						 	}
 						}
 						else
@@ -6703,7 +7011,52 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
             return SendClientMessage(playerid, ~1, string), true;
         }
     }
-
+	if(dialogid == Wepsdialog)
+	{
+	    if(!response) return 1;
+	    if(Team[playerid] == ZOMBIE) return 1;
+	    if(sscanf(inputtext, "i", inputtext[0])) return SendClientMessage(playerid, white, "Please, write the number of the weapons rank that you want to get.");
+	    if(inputtext[0] < 1 || inputtext[0] > PInfo[playerid][Rank]) return SendClientMessage(playerid, red, "You can't get these weapons.");
+	    
+	    switch(inputtext[0])
+		{
+		    case 1: GivePlayerWeapon(playerid,23,90),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,5),CMDWepUsed[playerid]++;
+		    case 2: GivePlayerWeapon(playerid,23,110),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,10),CMDWepUsed[playerid]++;
+		    case 3: GivePlayerWeapon(playerid,23,160),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,15),CMDWepUsed[playerid]++;
+		    case 4: GivePlayerWeapon(playerid,23,190),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,20),CMDWepUsed[playerid]++;
+		    case 5: GivePlayerWeapon(playerid,22,100),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,25),CMDWepUsed[playerid]++;
+		    case 6: GivePlayerWeapon(playerid,22,150),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,30),CMDWepUsed[playerid]++;
+		    case 7: GivePlayerWeapon(playerid,22,200),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,35),CMDWepUsed[playerid]++;
+		    case 8: GivePlayerWeapon(playerid,22,250),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,40),CMDWepUsed[playerid]++;
+		    case 9: GivePlayerWeapon(playerid,22,300),GivePlayerWeapon(playerid,6,1),GivePlayerWeapon(playerid,25,45),CMDWepUsed[playerid]++;
+		    case 10: GivePlayerWeapon(playerid,22,300),GivePlayerWeapon(playerid,6,1),GivePlayerWeapon(playerid,25,100),GivePlayerWeapon(playerid,33,25),CMDWepUsed[playerid]++;
+		    case 11: GivePlayerWeapon(playerid,22,400),GivePlayerWeapon(playerid,6,1),GivePlayerWeapon(playerid,25,150),GivePlayerWeapon(playerid,33,30),CMDWepUsed[playerid]++;
+		    case 12: GivePlayerWeapon(playerid,22,500),GivePlayerWeapon(playerid,6,1),GivePlayerWeapon(playerid,25,250),GivePlayerWeapon(playerid,33,35),CMDWepUsed[playerid]++;
+		    case 13: GivePlayerWeapon(playerid,22,650),GivePlayerWeapon(playerid,6,1),GivePlayerWeapon(playerid,25,350),GivePlayerWeapon(playerid,33,40),CMDWepUsed[playerid]++;
+		    case 14: GivePlayerWeapon(playerid,22,750),GivePlayerWeapon(playerid,5,1),GivePlayerWeapon(playerid,25,350),GivePlayerWeapon(playerid,33,45),CMDWepUsed[playerid]++;
+		    case 15: GivePlayerWeapon(playerid,24,100),GivePlayerWeapon(playerid,5,1),GivePlayerWeapon(playerid,25,350),GivePlayerWeapon(playerid,33,50),CMDWepUsed[playerid]++;
+		    case 16: GivePlayerWeapon(playerid,24,150),GivePlayerWeapon(playerid,5,1),GivePlayerWeapon(playerid,25,400),GivePlayerWeapon(playerid,33,55),CMDWepUsed[playerid]++;
+		    case 17: GivePlayerWeapon(playerid,24,200),GivePlayerWeapon(playerid,5,1),GivePlayerWeapon(playerid,25,450),GivePlayerWeapon(playerid,33,60),CMDWepUsed[playerid]++;
+		    case 18: GivePlayerWeapon(playerid,24,250),GivePlayerWeapon(playerid,5,1),GivePlayerWeapon(playerid,25,500),GivePlayerWeapon(playerid,33,65),CMDWepUsed[playerid]++;
+		    case 19: GivePlayerWeapon(playerid,24,300),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,500),GivePlayerWeapon(playerid,33,70),CMDWepUsed[playerid]++;
+		    case 20: GivePlayerWeapon(playerid,24,350),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,550),GivePlayerWeapon(playerid,28,120),GivePlayerWeapon(playerid,33,75),CMDWepUsed[playerid]++;
+		    case 21: GivePlayerWeapon(playerid,24,400),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,600),GivePlayerWeapon(playerid,28,200),GivePlayerWeapon(playerid,33,80),CMDWepUsed[playerid]++;
+		    case 22: GivePlayerWeapon(playerid,24,450),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,650),GivePlayerWeapon(playerid,28,250),GivePlayerWeapon(playerid,33,85),CMDWepUsed[playerid]++;
+		    case 23: GivePlayerWeapon(playerid,24,500),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,700),GivePlayerWeapon(playerid,28,300),GivePlayerWeapon(playerid,33,90),CMDWepUsed[playerid]++;
+		    case 24: GivePlayerWeapon(playerid,24,550),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,25,750),GivePlayerWeapon(playerid,28,350),GivePlayerWeapon(playerid,33,95),CMDWepUsed[playerid]++;
+		    case 25: GivePlayerWeapon(playerid,24,600),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,26,150),GivePlayerWeapon(playerid,28,400),GivePlayerWeapon(playerid,33,100),CMDWepUsed[playerid]++;
+		    case 26: GivePlayerWeapon(playerid,24,650),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,26,200),GivePlayerWeapon(playerid,28,450),GivePlayerWeapon(playerid,33,110),CMDWepUsed[playerid]++;
+		    case 27: GivePlayerWeapon(playerid,24,700),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,26,250),GivePlayerWeapon(playerid,28,500),GivePlayerWeapon(playerid,33,120),CMDWepUsed[playerid]++;
+		    case 28: GivePlayerWeapon(playerid,24,750),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,26,300),GivePlayerWeapon(playerid,28,550),GivePlayerWeapon(playerid,33,130),CMDWepUsed[playerid]++;
+		    case 29: GivePlayerWeapon(playerid,24,800),GivePlayerWeapon(playerid,4,1),GivePlayerWeapon(playerid,26,400),GivePlayerWeapon(playerid,28,600),GivePlayerWeapon(playerid,33,140),CMDWepUsed[playerid]++;
+		    case 30: GivePlayerWeapon(playerid,24,600),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,26,150),GivePlayerWeapon(playerid,32,100),GivePlayerWeapon(playerid,33,150),CMDWepUsed[playerid]++;
+			case 31: GivePlayerWeapon(playerid,24,700),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,26,200),GivePlayerWeapon(playerid,32,150),GivePlayerWeapon(playerid,33,160),CMDWepUsed[playerid]++;
+			case 32: GivePlayerWeapon(playerid,24,800),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,26,250),GivePlayerWeapon(playerid,32,200),GivePlayerWeapon(playerid,33,170),CMDWepUsed[playerid]++;
+	        case 33: GivePlayerWeapon(playerid,24,900),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,26,300),GivePlayerWeapon(playerid,32,300),GivePlayerWeapon(playerid,33,180),CMDWepUsed[playerid]++;
+	        case 34: GivePlayerWeapon(playerid,24,1000),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,26,400),GivePlayerWeapon(playerid,32,400),GivePlayerWeapon(playerid,33,190),CMDWepUsed[playerid]++;
+	        case 35..50: GivePlayerWeapon(playerid,24,700),GivePlayerWeapon(playerid,9,1),GivePlayerWeapon(playerid,27,50),GivePlayerWeapon(playerid,32,150),GivePlayerWeapon(playerid,3,250),GivePlayerWeapon(playerid,30,200),CMDWepUsed[playerid]++;
+		}
+	}
     if(dialogid == Change_Pass1)
     {
         if(response)
@@ -6860,74 +7213,74 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
             case 0:
 			{
 				SetPlayerPos(playerid, 2606.136230, -1463.581054, 19.009654);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Groove
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // Groove
 			}
             case 1:
 			{
 				SetPlayerPos(playerid, 1694.141113, -1971.765380, 8.824961);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Unity
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // Unity
 			}
             case 2:
 			{
 				SetPlayerPos(playerid, 1547.274780, -1636.830566, 6.218750);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // LSPD
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // LSPD
 			}
             case 3:
             {
 				SetPlayerPos(playerid, 1294.354125, -1249.394653, 13.600000);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Hospital
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // Hospital
 			}
             case 4:
             {
 				SetPlayerPos(playerid, 1908.839355, -1318.581298, 14.199999);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Glen
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // Glen
 			}
             case 5:
             {
 				SetPlayerPos(playerid, 831.413146, -1390.246582, -0.553125);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Market Station
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // Market Station
 			}
             case 6:
             {
 				SetPlayerPos(playerid, 998.767272, -897.245483, 42.300121);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Vinewood
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // Vinewood
 			}
             case 7:
             {
 				SetPlayerPos(playerid, 2795.812744, -1176.926879, 28.915470);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Playa Costera
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // Playa Costera
 			}
             case 8:
             {
 				SetPlayerPos(playerid, 1618.350830, -993.629333, 24.067668);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Mulhegan
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // Mulhegan
 			}
             case 9:
             {
 				SetPlayerPos(playerid, 358.485534, -1755.051025, 5.524650);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Mansion
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // Mansion
 			}
 			case 10:
             {
 				SetPlayerPos(playerid, 237.843780, -1387.799804, 53.594272);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Super Market
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // Super Market
 			}
 			case 11:
             {
 				SetPlayerPos(playerid, 975.114929, -1525.581298, 13.559997);
-				SetPlayerWeather(playerid, 9);
-				SetPlayerTime(playerid, 6, 0); // Beach
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0); // Beach
 			}
             case 12:
             {
@@ -6936,11 +7289,13 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 				TogglePlayerControllable(playerid, false);
 				GameTextForPlayer(playerid, "~w~Loading objects, wait..", 4000, 4);
 				SetTimerEx("ObjectsLoaded", 4000, 0, "i", playerid);
-				SetPlayerWeather(playerid, 9);
-	    		SetPlayerTime(playerid, 6, 0);
+				SetPlayerWeather(playerid, 32);
+				SetPlayerTime(playerid, 12, 0);
 			}
 		}
     }
+
+
     if(dialogid == Nozombieperkdialog)
 	{
 	    if(!response) return 0;
@@ -7247,12 +7602,13 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 		PInfo[playerid][SPerk] = 14;
 		SendClientMessage(playerid,orange,"You have successfully changed your survivor perk.");
 	}
+	/*
 	if(dialogid == Homingbeacondialog)
 	{
 	    if(!response) return 0;
 		PInfo[playerid][SPerk] = 15;
 		SendClientMessage(playerid,orange,"You have successfully changed your survivor perk.");
-	}
+	}*/
 	if(dialogid == Mastermechanicdialog)
 	{
 	    if(!response) return 0;
@@ -7286,6 +7642,22 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
  		SendClientMessage(playerid, 0xFFFFFFFF, "GUIDE: To use this perk, after using /hideo press \"C\" to hide.");
  		Activated{playerid} = true;
 	}
+	if(dialogid == Bullet_Dialog)
+    {
+        if(!response) return 0;
+		PInfo[playerid][SPerk] = 15;
+		SendClientMessage(playerid,orange,"You have successfully changed your survivor perk.");
+		PInfo[playerid][Silver_Bullet] = 0;
+		Timer_Bullet[playerid] = SetTimerEx("timer_bullet", 50, true, "i", playerid);
+    }
+    
+    if(dialogid == Antiscreamdialog)
+    {
+        if(!response) return 0;
+		PInfo[playerid][SPerk] = 21;
+		SendClientMessage(playerid,orange,"You have successfully changed your survivor perk.");
+    }
+
 	if(dialogid == Humanperksdialog)
 	{
 	    if(!response) return 0;
@@ -7351,7 +7723,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	    }
 	    if(listitem == 15)
 	    {
-	        ShowPlayerDialog(playerid,Homingbeacondialog,0,"Homing Beacon",""cwhite"This perk allows you to set a \"Signal Flare\" so you know your way to that point. -"cred"H"cwhite"-","Set","Cancel");
+	        ShowPlayerDialog(playerid,Bullet_Dialog,0,"Silver Bullet",""cwhite"When this perk is activated, every 25 shoots of any weapon, make a fatal blow. It gives double XP per kill","Set","Cancel");
+	        //ShowPlayerDialog(playerid,Homingbeacondialog,0,"Silver Bullet",""cwhite"This perk allows you to set a \"Signal Flare\" so you know your way to that point. -"cred"H"cwhite"-","Set","Cancel");
 	    }
 	    if(listitem == 16)
 	    {
@@ -7373,6 +7746,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	    {
 	        ShowPlayerDialog(playerid,Firemodedialog,0,"Fire punch",""cwhite"This perk allows you to set a zombie on fire, when you punch them.","Set","Cancel");
 	    }
+	    if(listitem == 21)
+	    {
+	        ShowPlayerDialog(playerid,Antiscreamdialog,0,"Anti Scream",""cwhite"Zombies perks 9/20 (screamer) doesn't affect with this perk.","Set","Cancel");
+	    }
 	}
 	if(dialogid == Logindialog)
 	{
@@ -7393,7 +7770,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 			SendClientMessage(playerid, -1, " ");
 			SendClientMessage(playerid, -1, " ");
 			SendClientMessage(playerid, -1, " ");
-			//SendClientMessage(playerid, -1, "{CCCCCC}You've been logged in sucessfull.");
+			SendClientMessage(playerid, -1, "{CCCCCC}You've been logged in sucessfull.");
+			SendClientMessage(playerid, -1, "{CCCCCC}To see the christmas features use: /christmas - To enable the falling snow use /snow");
 			LoadStats(playerid);
 			//CheckRankup(playerid);
 			PInfo[playerid][Logged] = 1;
@@ -7439,6 +7817,36 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	}
 	return 0;
 }
+
+public OnPlayerWeaponShot(playerid, weaponid, hittype, hitid, Float:fX, Float:fY, Float:fZ)
+{
+    //new szString[144];
+    //format(szString, sizeof(szString), "Weapon %i fired. hittype: %i   hitid: %i   pos: %f, %f, %f", weaponid, hittype, hitid, fX, fY, fZ);
+    //SendClientMessage(playerid, -1, szString);
+
+    switch(weaponid)
+	{
+		case 22,23,24,25,26,27,28,29,30,31,32,33,34:
+		{
+			if(PInfo[playerid][SPerk] == 15)
+			{
+				PInfo[playerid][Silver_Bullet]++;
+				if(PInfo[playerid][Silver_Bullet] >= 25)
+			   		PInfo[playerid][Silver_Bullet] = 0;
+				if(PInfo[playerid][Silver_Bullet] == 23)
+				{
+                    SendClientMessage(playerid, -1, "Next bullet is the final blow!");
+				}
+  			}
+
+		}
+    }
+
+
+
+    return 1;
+}
+
 
 public OnPlayerText(playerid, text[])
 {
@@ -7989,7 +8397,7 @@ public OnPlayerUpdate(playerid)
 
 
     new anim = GetPlayerAnimationIndex(playerid);
-	if(anim == 1025 || anim == 1026 || anim == 1027 || anim == 1633 || anim == 227 || anim == 232 || anim == 1627 || anim == 54 ||anim == 1650 || anim == 1651 || anim == 132 ||anim == 133)
+	if(anim == 1025 || anim == 1026 || anim == 1027 || anim == 1633 || anim == 227 || anim == 232 || anim == 1627 || anim == 54 ||anim == 1650 || anim == 1651 || anim == 132 || anim == 133 || anim == 85 || anim == 86)
 	{
 		g_EnterAnim{playerid} = true;
 	}
@@ -8326,12 +8734,12 @@ public OnPlayerClickPlayer(playerid, clickedplayerid, source)
 
     if(PInfo[playerid][Level] > 0)
     {
-        new string[350], pip[16], Float:health, Float:Armour;
+        new string[800], pip[16], Float:health, Float:Armour;
 
         GetPlayerHealth(clickedplayerid, health);
         GetPlayerArmour(clickedplayerid, Armour);
 		GetPlayerIp(clickedplayerid, pip, sizeof(pip));
-        format(string, sizeof string, ""cgold"Player: %s | IP: %s\n\n"cwhite"Rank: %i - XP: %i/%i - Kills: %i - Team Kills: %i - Deaths: %i - SPerk: %i - ZPerk: %i\n"cwhite"CPs Cleared: %i - Infects: %i - Bites: %i - Assists: %i - Vomited: %i - Premium: %s\n"cwhite"Health: %f - Armour: %f - Warnings: %d/3",
+        format(string, sizeof string, ""cgold"Player: %s | IP: %s\n\n"cwhite"Rank: %i - XP: %i/%i - Kills: %i - Team Kills: %i - Deaths: %i - SPerk: %i - ZPerk: %i\n"cwhite"CPs Cleared: %i - Infects: %i - Bites: %i - Assists: %i - Vomited: %i - Premium: %s\n"cwhite"Health: %f - Armour: %f - Warnings: %d/3\n\n"cred"Player weapons:\n"cwhite"Weapon ( Ammo )\n",
             GetPName(clickedplayerid),
             pip,
 			PInfo[clickedplayerid][Rank],
@@ -8352,12 +8760,22 @@ public OnPlayerClickPlayer(playerid, clickedplayerid, source)
 			Armour,
 			PInfo[clickedplayerid][Warns]
 		);
+		new gun[120];
+		new w_id, w_ammo, w_name[32];
+		for(new x = 0; x < 12; x++)
+		{
+			GetPlayerWeaponData(playerid, x, w_id, w_ammo);
+			GetWeaponName(w_id, w_name, sizeof(w_name));
+			if(w_id == 0) continue;
+			format(gun, sizeof(gun), ""cgold"%s "cwhite"( "cgold"%d "cwhite")\n", w_name, w_ammo);
+			strcat(string, gun);
+		}
 		ShowPlayerDialog(playerid, Clickstatsdialog, DIALOG_STYLE_MSGBOX, "STATS BOX", string, ">>", "<<");
 	} else {
-	    new string[350], Float:health, Float:Armour;
+	    new string[1034], Float:health, Float:Armour;
      	GetPlayerHealth(clickedplayerid, health);
         GetPlayerArmour(clickedplayerid, Armour);
-        format(string, sizeof string, ""cgold"Player: %s\n\n"cwhite"Rank: %i - XP: %i/%i - Kills: %i - Team Kills: %i - Deaths: %i - SPerk: %i - ZPerk: %i\n"cwhite"CPs Cleared: %i - Infects: %i - Bites: %i - Assists: %i - Vomited: %i - Premium: %s\n"cwhite"Health: %f - Armour %f - Warnings: %d/3",
+        format(string, sizeof string, ""cgold"Player: %s\n\n"cwhite"Rank: %i - XP: %i/%i - Kills: %i - Team Kills: %i - Deaths: %i - SPerk: %i - ZPerk: %i\n"cwhite"CPs Cleared: %i - Infects: %i - Bites: %i - Assists: %i - Vomited: %i - Premium: %s\n"cwhite"Health: %f - Armour %f - Warnings: %d/3\n\n"cred"Player weapons:\n"cwhite"Weapon\t\t\tAmmo\n",
             GetPName(clickedplayerid),
 			PInfo[clickedplayerid][Rank],
 			PInfo[clickedplayerid][XP],
@@ -8377,7 +8795,16 @@ public OnPlayerClickPlayer(playerid, clickedplayerid, source)
 			Armour,
 			PInfo[clickedplayerid][Warns]
 		);
-		ShowPlayerDialog(playerid, Clickstatsdialog, DIALOG_STYLE_MSGBOX, "STATS BOX", string, ">>", "<<");
+		new gun[120];
+		new w_id, w_ammo, w_name[32];
+		for(new x = 0; x < 12; x++)
+		{
+			GetPlayerWeaponData(playerid, x, w_id, w_ammo);
+			GetWeaponName(w_id, w_name, sizeof(w_name));
+			format(gun, sizeof(gun), ""cgold"%s "cwhite"( "cgold"%d "cwhite")\n", w_name, w_ammo);
+			strcat(string, gun);
+		}
+		ShowPlayerDialog(playerid, Clickstatsdialog, DIALOG_STYLE_MSGBOX, "STATS BOX", string, "X", "");
 	}
     return 1;
 }
@@ -8761,7 +9188,7 @@ function WeatherUpdate()
 	    if(!IsPlayerConnected(i)) continue;
 		if(PInfo[i][P_STATUS] != PS_SPAWNED) continue;
 	    if(Team[i] == ZOMBIE) SetPlayerWeather(i,2718);
-	    SetPlayerWeather(i,id);
+	    SetPlayerWeather(i, 32);
 		Weather = id;
 		#if snowing == true
 		{
@@ -8875,8 +9302,8 @@ stock CheckRankup(playerid,gw=0)
 	    if(Team[playerid] == ZOMBIE) return 0;
 	    switch(PInfo[playerid][Rank])
 		{
-		    case 1: GivePlayerWeapon(playerid,23,90),GivePlayerWeapon(playerid,25,5);
-		    case 2: GivePlayerWeapon(playerid,23,110),GivePlayerWeapon(playerid,25,10);
+		    case 1: GivePlayerWeapon(playerid,23,90),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,5);
+		    case 2: GivePlayerWeapon(playerid,23,110),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,10);
 		    case 3: GivePlayerWeapon(playerid,23,160),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,15);
 		    case 4: GivePlayerWeapon(playerid,23,190),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,20);
 		    case 5: GivePlayerWeapon(playerid,22,100),GivePlayerWeapon(playerid,7,1),GivePlayerWeapon(playerid,25,25);
@@ -9227,7 +9654,7 @@ function CheckCP()
 	TextDrawSetString(RadioBox, st);
 	TextDrawShowForAll(RadioBox);
 
-
+/*
 	if(CPscleared >= 2)
 	{
 		new infects;
@@ -9308,6 +9735,7 @@ function CheckCP()
 			}
 		}
 	}
+ */
 	if(CPValue >= CPVALUE)
 	{
 	    CPscleared++;
@@ -9327,6 +9755,7 @@ function CheckCP()
         	if(IsPlayerInCheckpoint(i) && Team[i] == HUMAN)
         	{
         	    if(Team[i] == ZOMBIE) continue;
+        	    if(IsSpecing[i] == 1) continue;
         	    HasLeftCP{i} = false;
         		SendClientMessage(i,white,"** "cred"The military seems to be leaving, so should you.");
 				PlaySound(i,1083);
@@ -9501,18 +9930,21 @@ function ShowPlayerHumanPerks(playerid)
  	if(PInfo[playerid][Rank] == 15) return ShowPlayerDialog(playerid,Humanperksdialog,2,"Survivor perks","1\tNone\n2\tExtra meds \n3\tExtra fuel \n4\tExtra oil \n5\tFlashbang Grenades \
 	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots","Choose","Cancel");
 	if(PInfo[playerid][Rank] == 16) return ShowPlayerDialog(playerid,Humanperksdialog,2,"Survivor perks","1\tNone\n2\tExtra meds \n3\tExtra fuel \n4\tExtra oil \n5\tFlashbang Grenades \
-	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tHoming Beacon","Choose","Cancel");
+	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tSilver Bullet","Choose","Cancel");
 	if(PInfo[playerid][Rank] == 17) return ShowPlayerDialog(playerid,Humanperksdialog,2,"Survivor perks","1\tNone\n2\tExtra meds \n3\tExtra fuel \n4\tExtra oil \n5\tFlashbang Grenades \
-	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tHoming Beacon \n17\tMaster Mechanic","Choose","Cancel");
+	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tSilver Bullet \n17\tMaster Mechanic","Choose","Cancel");
 	if(PInfo[playerid][Rank] == 18) return ShowPlayerDialog(playerid,Humanperksdialog,2,"Survivor perks","1\tNone\n2\tExtra meds \n3\tExtra fuel \n4\tExtra oil \n5\tFlashbang Grenades \
-	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tHoming Beacon \n17\tMaster Mechanic \n18\tFlame Rounds","Choose","Cancel");
+	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tSilver Bullet \n17\tMaster Mechanic \n18\tFlame Rounds","Choose","Cancel");
 	if(PInfo[playerid][Rank] == 19) return ShowPlayerDialog(playerid,Humanperksdialog,2,"Survivor perks","1\tNone\n2\tExtra meds \n3\tExtra fuel \n4\tExtra oil \n5\tFlashbang Grenades \
-	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tHoming Beacon \n17\tMaster Mechanic \n18\tFlame Rounds \n19\tLucky charm","Choose","Cancel");
+	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tSilver Bullet \n17\tMaster Mechanic \n18\tFlame Rounds \n19\tLucky charm","Choose","Cancel");
 	if(PInfo[playerid][Rank] == 20) return ShowPlayerDialog(playerid,Humanperksdialog,2,"Survivor perks","1\tNone\n2\tExtra meds \n3\tExtra fuel \n4\tExtra oil \n5\tFlashbang Grenades \
-	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tHoming Beacon \n17\tMaster Mechanic \n18\tFlame Rounds \n19\tLucky charm \n20\tGrenades","Choose","Cancel");
-	if(PInfo[playerid][Rank] >= 21) return ShowPlayerDialog(playerid,Humanperksdialog,2,"Survivor perks","1\tNone\n2\tExtra meds \n3\tExtra fuel \n4\tExtra oil \n5\tFlashbang Grenades \
-	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tHoming Beacon \n17\tMaster Mechanic \n18\tFlame Rounds \n19\tLucky charm \n20\tGrenades \
+	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tSilver Bullet \n17\tMaster Mechanic \n18\tFlame Rounds \n19\tLucky charm \n20\tGrenades","Choose","Cancel");
+	if(PInfo[playerid][Rank] == 21) return ShowPlayerDialog(playerid,Humanperksdialog,2,"Survivor perks","1\tNone\n2\tExtra meds \n3\tExtra fuel \n4\tExtra oil \n5\tFlashbang Grenades \
+	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tSilver Bullet \n17\tMaster Mechanic \n18\tFlame Rounds \n19\tLucky charm \n20\tGrenades \
 	\n21\tFire Punch","Choose","Cancel");
+	if(PInfo[playerid][Rank] >= 22) return ShowPlayerDialog(playerid,Humanperksdialog,2,"Survivor perks","1\tNone\n2\tExtra meds \n3\tExtra fuel \n4\tExtra oil \n5\tFlashbang Grenades \
+	\n6\tLess BiTE Damage \n7\tBurst Run \n8\tMedic \n9\tMore stamina \n10\tZombie Bait \n11\tStealth Mode \n12\tMechanic \n13\tMore ammo \n14\tField Doctor \n15\tRocket Boots \n16\tSilver Bullet \n17\tMaster Mechanic \n18\tFlame Rounds \n19\tLucky charm \n20\tGrenades \
+	\n21\tFire Punch\n22\tAnti Scream","Choose","Cancel");
 	return 1;
 }
 
@@ -10673,25 +11105,6 @@ function FiveSeconds()
 		{
 		    if(RoundEnded == 0)
 		    {
-          		/*if(Extra3CPs == 1)
-	        	{
-	        	    SetTimerEx("EndRound",3000,false,"i",1);
-				    GameTextForAll("~w~The round has ended.",3000,3);
-				    RoundEnded = 1;
-				    return 1;
-	        	}
-		        Extra3CPs = 1;
-		        CPscleared = 0;
-		        CPID = 0, CP_Activated = 0;
-		        KillTimer(HTimer);
-		        KillTimer(AirDTimer);
-		        foreach(new i:Player) DisablePlayerCheckpoint(i);
-		        KillTimer(RandomCPTimer);
-				SetTimer("Extra3CPS", 3000, false);
-				GameTextForAll("~y~Max ~r~infection ~y~level reached.",3000,3);*/
-				new string[200];
-    			format(string,sizeof(string),"04The round has ended.");
-                IRC_GroupSay(gGroupID, IRC_CHANNEL, string);
 				if(RoundEnded == 0)
 			    {
 					SetTimerEx("EndRound",3000,false,"i",1);
@@ -10713,26 +11126,6 @@ function FiveSeconds()
 	{
 	    if(RoundEnded == 0)
 	    {
-	        /*if(Extra3CPs == 1)
-        	{
-        	    SetTimerEx("EndRound",3000,false,"i",2);
-			    GameTextForAll("~w~The round has ended.",3000,3);
-			    RoundEnded = 1;
-			    return 1;
-        	}
-	        Extra3CPs = 1;
-	        CPscleared = 0;
-	        CPID = 0, CP_Activated = 0;
-	        KillTimer(HTimer);
-	        KillTimer(AirDTimer);
-	        foreach(new i:Player) DisablePlayerCheckpoint(i);
-	        KillTimer(RandomCPTimer);
-	    	SetTimer("Extra3CPS", 3000, false);
-			GameTextForAll("~y~6 CPs Cleared Sucessfully.",3000,3);*/
-			new string[200];
-			format(string,sizeof(string),"04The round has ended.");
-            IRC_GroupSay(gGroupID, IRC_CHANNEL, string);
-
 			if(RoundEnded == 0)
 		    {
 				SetTimerEx("EndRound",3000,false,"i",2);
@@ -10856,14 +11249,14 @@ function Random3Checkpoints()
 
 function EndRound(win)
 {
- 	new number,there,idk = soap_id,idd = soap_id,idi = soap_id,maxk,maxd,maxi,string[160];
+ 	new /*number,there,*/idk = soap_id,idd = soap_id,idi = soap_id,maxk,maxd,maxi,string[160];
 	for(new i; i < MAX_PLAYERS;i++)
 	{
 	    if(!IsPlayerConnected(i)) continue;
 	    if(PInfo[i][KillsRound] > maxk) idk = i, maxk = PInfo[i][KillsRound];
 	    if(PInfo[i][DeathsRound] > maxd) idd = i, maxd = PInfo[i][DeathsRound];
 	    if(PInfo[i][InfectsRound] > maxi) idi = i, maxi = PInfo[i][InfectsRound];
-	    if(number >= 30)
+	    /*if(number >= 30)
 	    {
 	        SetPlayerPos(i,RandomEnd[random(sizeof(RandomEnd))][0],EndPos[random(sizeof(RandomEnd))][1],EndPos[random(sizeof(RandomEnd))][2]);
             SetPlayerFacingAngle(i,352.1313);
@@ -10873,13 +11266,16 @@ function EndRound(win)
 			if(IsPlayerInRangeOfPoint(j,0.1,EndPos[number][0],EndPos[number][1],EndPos[number][2]))
 				there = 1;
 		}
-		if(there == 0) SetPlayerPos(i,EndPos[number][0],EndPos[number][1],EndPos[number][2]+1),number++,there = 0;
+		if(there == 0) SetPlayerPos(i,EndPos[number][0],EndPos[number][1],EndPos[number][2]+1),number++,there = 0;*/
 
 		TogglePlayerControllable(i,0);
-		Streamer_UpdateEx(i, 1765.365478, -1955.114257, 13.546875);
-		InterpolateCameraPos(i, 1765.365478, -1955.114257, 13.546875, 1842.036499, -1955.057739, 29.847051, 6000);
-		InterpolateCameraLookAt(i, 1768.667968, -1951.364868, 13.358379, 1840.537109, -1950.660400, 27.998983, 6000);
-
+		
+		TogglePlayerSpectating(i, true);
+		Streamer_UpdateEx(i, 2402.386230, -1713.624511, 14.132812, 0, 0);
+		
+		InterpolateCameraPos(i, 2402.672119, -1740.595214, 13.546875, 2402.471191, -1713.942504, 14.615949, 14000);
+		InterpolateCameraLookAt(i, 2402.893798, -1735.600341, 13.593485, 2402.002197, -1708.978515, 14.989042, 14000);
+        
 		PlayAudioStreamForPlayer(i, "http://k003.kiwi6.com/hotlink/ayll1qammj/Marilyn_Manson_-_Resident_Evil_movie_soundtrack_2008_mp3cut.net_.mp3", 45);
 
 		PlayerTextDrawHide(i, XPBox[i][0]);
@@ -10896,7 +11292,7 @@ function EndRound(win)
 	TextDrawHideForAll(CP_Name);
 
 	Extra3CPs = 0;
-	number = 0;
+	//number = 0;
 	format(string,sizeof string,"~g~~h~Most Kills: ~w~%s ~n~~g~~h~Most Deaths: ~w~%s ~n~~g~~h~Most Infects: ~w~%s",
 	    GetPName(idk),GetPName(idd),GetPName(idi));
 	TextDrawSetString(RoundStats,string);
@@ -10906,29 +11302,30 @@ function EndRound(win)
 	else GameTextForAll("~g~~h~Humans have cleared all the ~n~~r~~h~checkpoints~g~~h~!",6000,3);
 
 	for(new i; i < MAX_PLAYERS;i++) {
-	    new playerid; playerid = i;
-	    SetTimerEx("EndRound2", 6000, false, "i", playerid);
+	    SetTimerEx("EndRound2", 6000, false, "i", i);
 	}
 	return 1;
 }
 
 function EndRound2(playerid)
 {
-    Streamer_UpdateEx(playerid, 1842.036499, -1955.057739, 29.847051);
-    InterpolateCameraPos(playerid, 1842.036499, -1955.057739, 29.847051, 1822.736450, -1731.843627, 19.665786, 6000);
-	InterpolateCameraLookAt(playerid, 1840.537109, -1950.660400, 27.998983, 1817.764648, -1731.348754, 19.475986, 6000);
-	GameTextForAll("~b~~h~Thanks for playing!",6000,3);
-    SetTimer("EndRound3", 6000, false);
+    //Streamer_UpdateEx(playerid, 1842.036499, -1955.057739, 29.847051);
+    //InterpolateCameraPos(playerid, 1842.036499, -1955.057739, 29.847051, 1822.736450, -1731.843627, 19.665786, 6000);
+	//InterpolateCameraLookAt(playerid, 1840.537109, -1950.660400, 27.998983, 1817.764648, -1731.348754, 19.475986, 6000);
+	//Streamer_UpdateEx(i, 2402.386230, -1713.624511, 14.132812);
+	GameTextForAll("~b~~h~Thanks for playing!",4000,3);
+    SetTimer("EndRound3", 4000, false);
 	return 1;
 }
 
 function EndRound3(playerid)
 {
-    Streamer_UpdateEx(playerid, 1822.736450, -1731.843627, 19.665786);
-    InterpolateCameraPos(playerid, 1822.736450, -1731.843627, 19.665786, 1516.314697, -1743.069702, 37.685371, 6000);
-	InterpolateCameraLookAt(playerid, 1817.764648, -1731.348754, 19.475986, 1517.327636, -1738.470825, 36.004932, 6000);
-    GameTextForAll("~w~eternal-~b~~h~~h~G~w~ames~b~~h~~h~.~w~net", 6000, 3);
-    SetTimer("EndRoundFinal", 6000, false);
+    //Streamer_UpdateEx(playerid, 1822.736450, -1731.843627, 19.665786);
+    //InterpolateCameraPos(playerid, 1822.736450, -1731.843627, 19.665786, 1516.314697, -1743.069702, 37.685371, 6000);
+	//InterpolateCameraLookAt(playerid, 1817.764648, -1731.348754, 19.475986, 1517.327636, -1738.470825, 36.004932, 6000);
+	//Streamer_UpdateEx(i, 2402.386230, -1713.624511, 14.132812);
+    GameTextForAll("~w~eternal-~b~~h~~h~G~w~ames~b~~h~~h~.~w~net", 4000, 3);
+    SetTimer("EndRoundFinal", 4000, false);
 	return 1;
 }
 
@@ -10942,8 +11339,12 @@ function EndRoundFinal()
 	}
 	//Change Gm
 	// We change it!!!
-	SetTimer("change_gm", 1000, 0); // Just comment it
-	//SendRconCommand("gmx"); // just comment it
+	//SetTimer("change_gm", 1000, 0); // Just comment it
+	new string[30];
+	format(string,sizeof(string),"04The round has ended.");
+ 	IRC_GroupSay(gGroupID, IRC_CHANNEL, string);
+ 	
+	SendRconCommand("gmx"); // just comment it
 	return 1;
 }
 
@@ -10986,6 +11387,30 @@ stock GetClosestPlayer(playerid,Float:limit)
             GetPlayerPos(i,x2,y2,z2);
             new Float:Dist = GetDistanceBetweenPoints(x1,y1,z1,x2,y2,z2);
             if(floatcmp(Range,Dist) == 1 && floatcmp(limit,Range) == 1)
+            {
+                Range = Dist;
+                id = i;
+            }
+        }
+    }
+    return id;
+}
+
+
+stock GetClosestPlayerGod(playerid)
+{
+    new Float:x1, Float:y1, Float:z1, Float:x2, Float:y2, Float:z2;
+    GetPlayerPos(playerid,x1,y1,z1);
+    new Float:Range = 9990.9;
+    new id = -1;
+    for(new i; i < MAX_PLAYERS;i++)
+    {
+        if(!IsPlayerConnected(i) || IsPlayerNPC(i)) continue;
+        if(playerid != i)
+        {
+            GetPlayerPos(i,x2,y2,z2);
+            new Float:Dist = GetDistanceBetweenPoints(x1,y1,z1,x2,y2,z2);
+            if(Range > Dist && Team[i] == HUMAN)
             {
                 Range = Dist;
                 id = i;
@@ -11055,11 +11480,11 @@ function TikiStatueFix()
 	foreach(new i:Player)
 	{
 	    if(GotXPFromPump[i] != false) return 1;
-		if(IsPlayerInRangeOfPoint(i, 2.5, PX, PY, PZ))
+		if(IsPlayerInRangeOfPoint(i, 1.5, PX, PY, PZ))
 		{
 		    new
 				string[256],
-				randxp = 10 + random(25),
+				randxp = 20 + random(35),
 				Hour, Minute, Second;
 
 		    PInfo[i][XP] += randxp;
@@ -11077,10 +11502,10 @@ function TikiStatueFix()
 
 			Winner = 1;
 			TikiStatueOn = 0;
-			SendFMessageToAll(COLOR_MAUVE, "» Tiki Statue was found by %s. His wish him congratulations!", GetPName(i));
+			SendFMessageToAll(-1, "» "cgreen"Christmas gift was found by %s. His wish him congratulations!", GetPName(i));
 			gettime(Hour, Minute, Second);
-			SendFMessageToAll(COLOR_MAUVE, "» A new Tiki Statue will be hidden in %d minutes.", Minutes-Minute+10);
-			SendFMessage(i, white, "» {2C8522}You won the sum of %d XP !", randxp);
+			SendFMessageToAll(-1, "» {BDBDBD}A new gift will be hidden in %d minutes.", Minutes-Minute+10);
+			SendFMessage(i, white, "» "cgreen"You won the sum of %d XP !", randxp);
 
 		    DestroyDynamicPickup(TikiStatue);
 		    KillTimer(timer_pump);
@@ -11212,9 +11637,9 @@ stock GivePlayerXP(playerid)
 			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
 				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 32; PInfo[playerid][CurrentXP] = 32; }
 			} else {
-	 			if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 8; PInfo[playerid][CurrentXP] = 8; }
-			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
-				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
+	 			if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 32; PInfo[playerid][CurrentXP] = 32; }
 			}
 
 			if(PInfo[playerid][ClanID] != 0)
@@ -11236,15 +11661,15 @@ stock GivePlayerXP(playerid)
 		{
 		    new string[7];
 
-		    if(PInfo[playerid][Rank] < 5)
+			if(PInfo[playerid][Rank] < 5)
 			{
 			 	if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
 			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
 				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 32; PInfo[playerid][CurrentXP] = 32; }
 			} else {
-	 			if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 8; PInfo[playerid][CurrentXP] = 8; }
-			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
-				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
+	 			if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 16; PInfo[playerid][CurrentXP] = 16; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 24; PInfo[playerid][CurrentXP] = 24; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 32; PInfo[playerid][CurrentXP] = 32; }
 			}
 
 			if(PInfo[playerid][ClanID] != 0)
@@ -11271,9 +11696,9 @@ stock GivePlayerXP(playerid)
 			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
 				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 30; PInfo[playerid][CurrentXP] = 30; }
 			} else {
- 				if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 5; PInfo[playerid][CurrentXP] = 5; }
-			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 10; PInfo[playerid][CurrentXP] = 10; }
-				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
+ 				if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 10; PInfo[playerid][CurrentXP] = 10; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 30; PInfo[playerid][CurrentXP] = 30; }
 			}
 
 			if(PInfo[playerid][ClanID] != 0)
@@ -11300,9 +11725,9 @@ stock GivePlayerXP(playerid)
 			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
 				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 30; PInfo[playerid][CurrentXP] = 30; }
 			} else {
- 				if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 5; PInfo[playerid][CurrentXP] = 5; }
-			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 10; PInfo[playerid][CurrentXP] = 10; }
-				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
+ 				if(PInfo[playerid][Premium] == 0){ PInfo[playerid][XP] += 10; PInfo[playerid][CurrentXP] = 10; }
+			 	else if(PInfo[playerid][Premium] == 1){ PInfo[playerid][XP] += 20; PInfo[playerid][CurrentXP] = 20; }
+				else if(PInfo[playerid][Premium] == 2){ PInfo[playerid][XP] += 30; PInfo[playerid][CurrentXP] = 30; }
 			}
 
 			if(PInfo[playerid][ClanID] != 0)
@@ -11394,7 +11819,7 @@ stock DamagePlayer(playerid,i)
 		    if(IsPlayerInRangeOfPoint(j, 20.0, ZPS[i][0], ZPS[i][1], ZPS[i][2]))
 		    {
 		        if(j == playerid) continue;
-		        if(IsSpecing[playerid] == 1) continue;
+		        if(IsSpecing[j] == 1) continue;
 
 				if(PInfo[playerid][Rank] < 5)
 				{
@@ -11402,9 +11827,9 @@ stock DamagePlayer(playerid,i)
 				 	else if(PInfo[j][Premium] == 1){ PInfo[j][XP] += 16; PInfo[j][CurrentXP] = 16; }
 					else if(PInfo[j][Premium] == 2){ PInfo[j][XP] += 24; PInfo[j][CurrentXP] = 24; }
 				} else {
-		 			if(PInfo[j][Premium] == 0){ PInfo[j][XP] += 4; PInfo[j][CurrentXP] = 4; }
-				 	else if(PInfo[j][Premium] == 1){ PInfo[j][XP] += 8; PInfo[j][CurrentXP] = 8; }
-					else if(PInfo[j][Premium] == 2){ PInfo[j][XP] += 16; PInfo[j][CurrentXP] = 16; }
+		 			if(PInfo[j][Premium] == 0){ PInfo[j][XP] += 8; PInfo[j][CurrentXP] = 8; }
+				 	else if(PInfo[j][Premium] == 1){ PInfo[j][XP] += 16; PInfo[j][CurrentXP] = 16; }
+					else if(PInfo[j][Premium] == 2){ PInfo[j][XP] += 24; PInfo[j][CurrentXP] = 24; }
 				}
 
 		        PInfo[j][Assists]++;
@@ -11666,13 +12091,13 @@ function ServerSettings()
 
 	if(ServerN == 0)
 	{
-		SendRconCommand("hostname Zombie Apocalyptic Outbreak 2.1 - [LagShot]");
+		//SendRconCommand("hostname Zombie Apocalyptic Outbreak 2.1 - [LagShot]");
         SetTimer("ServerSettings", 2500,0);
 		ServerN = 1;
 	}
 	else if(ServerN == 1)
 	{
-		SendRconCommand("hostname eternal-Games.net ® Zombie Mode - [LagShot]");
+		//SendRconCommand("hostname eternal-Games.net ® Zombie Mode - [LagShot]");
         SetTimer("ServerSettings", 1500,0);
 		ServerN = 0;
 	}
@@ -11759,7 +12184,7 @@ function RandomMessage()
 		MRR = 0;
 		return 1;
 	}
-	else return 1;
+	return 1;
 }
 
 /*stock AddPlayerClasses()
@@ -12045,6 +12470,7 @@ function FakekillT()
 	foreach(new playerid:Player)
 	{
 		if(!IsPlayerConnected(playerid)) continue;
+		if(PInfo[playerid][P_STATUS] != PS_SPAWNED) continue;
 		//new str[64];
 	    //Fakekill[playerid]--;
 	    if(Fakekill[playerid] > 2)
@@ -12184,22 +12610,24 @@ function TikiEvent()
 
 	if(Winner == 0) {
 		DestroyDynamicPickup(TikiStatue);
-		SendClientMessageToAll(-1, "Nobody has found the tiki.");
+		SendClientMessageToAll(-1, "» "cred"Nobody has found the gift.");
 	}
 
 	Winner = 0;
 	Number = rand;
 
-	TikiStatue = CreateDynamicPickup(19320, 23, RandomPositions[rand][0], RandomPositions[rand][1], RandomPositions[rand][2]);
+
+    new smodel = random(sizeof(SantaPickupModel)); // 1276
+	TikiStatue = CreateDynamicPickup(SantaPickupModel[smodel][0], 23, RandomPositions[rand][0], RandomPositions[rand][1], RandomPositions[rand][2]);
 
 	PX = RandomPositions[rand][0], PY = RandomPositions[rand][1], PZ = RandomPositions[rand][2];
 
     timer_pump = SetTimer("TikiStatueFix", 800, true);
 
-	SendClientMessageToAll(COLOR_DARKMAUVE, "[ » ] Tiki Statue Event [ « ]");
-	format(string, sizeof(string), "» A new tiki was hidding in the area: %s.", LocationsName[rand]);
-	SendClientMessageToAll(COLOR_MAUVE, string);
-	SendClientMessageToAll(COLOR_MAUVE, "» You have 10 minutes to find this Tiki.");
+	SendClientMessageToAll(0xFF8000FF, "[ » ] Christmas Event [ « ]");
+	format(string, sizeof(string), "» {58ACFA}A new gift was hidding in the area: %s.", LocationsName[rand]);
+	SendClientMessageToAll(-1, string);
+	SendClientMessageToAll(-1, "» {58ACFA}You have 10 minutes to find this Tiki.");
 
     TikiStatueOn = 1;
 	foreach(new i:Player) GotXPFromPump[i] = false;
@@ -12823,6 +13251,38 @@ stock HasAnyWeapon(playerid)
 	return 0;
 }
 
+SnowSettings(playerid, bool:on = true)
+{
+    if(on)
+    {
+		if(GetPlayerInterior(playerid) == 0)
+		{
+  			new Float:Pos[3];
+			GetPlayerPos(playerid,Pos[0],Pos[1],Pos[2]);
+			Pos[2] = Pos[2]-4;
+	     	for(new g = 0; g < 2; g++)
+			{
+				if(SnowCreated[playerid] == 0)SnowObj[playerid][g] = CreateDynamicObject(18864,Pos[0]+random(5),Pos[1],Pos[2],0,0,random(45), -1, -1, playerid, 150.0),SnowCreated[playerid] = 1;
+	     		SetDynamicObjectPos(SnowObj[playerid][g],Pos[0]+random(5),Pos[1],Pos[2]);
+	        	SetDynamicObjectRot(SnowObj[playerid][g],0,0,random(45));
+	        	SnowCreated[playerid] = 1;
+	      	}
+    	}
+	}
+	else if(!on)
+	{
+	    if(SnowCreated[playerid] == 1)
+        {
+	  		for(new g = 0; g < 2; g++)
+			{
+	   			DestroyDynamicObject(SnowObj[playerid][g]);
+			}
+			SnowCreated[playerid] = 0;
+		}
+		else return true;
+	}
+    return true;
+}
 
 function ZHideAgain(playerid) CanHide{playerid} = true;
 function KickPlayer(playerid) Kick(playerid);
